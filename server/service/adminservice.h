@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include "../dao/userdao.h"
 #include "../dao/accountdao.h"
+#include <QSqlDatabase>
 
 /**
  * @brief 管理员服务层 - 处理管理员相关的业务逻辑
@@ -87,7 +88,8 @@ public:
     /**
      * @brief 修改用户信息 (Type 14)
      */
-    QJsonObject updateProfile(const QJsonObject& req);
+    QJsonObject updateProfile(const QJsonObject& req);  
+
 
 private:
     UserDAO m_userDao;

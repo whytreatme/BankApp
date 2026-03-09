@@ -3,6 +3,9 @@
 #include <QJsonArray>
 #include <QRandomGenerator>
 #include <QCryptographicHash>
+#include "../database.h"
+#include <QSqlError>
+
 
 AdminService::AdminService(QObject* parent)
     : QObject(parent)
@@ -138,24 +141,49 @@ QJsonObject AdminService::createUser(const QJsonObject& req)
     
     QString passwordHash = QCryptographicHash::hash((password + salt).toUtf8(), QCryptographicHash::Sha256).toHex();
 
-    // 插入用户
-    QString cardNumber = m_userDao.insertWithDetails(fullName, idCard, phone, birthDate, address, passwordHash, salt);
-    if (cardNumber.isEmpty()) {
-        return {{"status", "error"}, {"msg", "用户创建失败"}};
-    }
+    // 插入用户和获取获取用户ID并创建账户应该处于事务当中  
 
-    // 获取用户ID并创建账户
-    qint64 userId;
-    if (m_userDao.findIdByCardOrUsername(cardNumber, userId)) {
-        m_accountDao.create(userId, 0.0);  // 初始余额为0
+    QSqlDatabase db = Database::instance().getDatabase();
+    if(!db.transaction()){
+        return {{"status", "error"}, {"msg", "系统错误：事务失败"}};
     }
+    try {
+        // Transaction operations will go here
+        QString cardNumber = m_userDao.insertWithDetails(fullName, idCard, phone, birthDate, address, passwordHash, salt);
+        if (cardNumber.isEmpty()) {
+            db.rollback();
+            return {{"status", "error"}, {"msg", "用户创建失败"}};
+        }
+        qint64 userId;
+        if(!m_userDao.findIdByCardOrUsername(cardNumber, userId)){
+            db.rollback();
+            return {{"status", "error"}, {"msg", "无法检索新生成的 ID"}};
+        }
+        if (m_accountDao.create(userId, 0.0) == -1) {
+            db.rollback();
+            return {{"status", "error"}, {"msg", "账户创建失败"}};
+        }
+         // 初始余额为0
+        if (!db.commit()) {
+            db.rollback();
+            return {{"status", "error"}, {"msg", "系统错误：提交失败"}};
+        }
 
-    return {
+        return {
         {"status", "success"},
         {"msg", "用户创建成功"},
         {"card_number", cardNumber},
         {"password", password}
-    };
+        };
+    } catch (const std::exception& e) {
+        db.rollback();
+        qCritical() << "Transfer exception:" << e.what();
+        return {{"status", "error"}, {"msg", "系统内部错误"}};
+    } catch (...) {
+        db.rollback();
+        return {{"status", "error"}, {"msg", "未知严重错误"}};
+    }
+    
 }
 
 QJsonObject AdminService::resetPassword(const QJsonObject& req)

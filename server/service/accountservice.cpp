@@ -70,6 +70,7 @@ QJsonObject AccountService::transfer(const QString& fromUserIdStr, const QJsonOb
 
     try {
         double fromBalance;
+        
         if (!m_accountDao.getBalance(fromUserId, fromBalance)) {
             db.rollback();
             return transferErrorResponse("账户查询失败", amount);
