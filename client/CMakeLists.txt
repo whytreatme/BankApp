@@ -3,17 +3,11 @@ qt_add_executable(BankApp
     WIN32 MACOSX_BUNDLE
     main.cpp
     mainwindow.cpp
-    mainwindow.h
     loginwidget.cpp
-    loginwidget.h
     transferwidget.cpp
-    transferwidget.h
     adminwidget.cpp
-    adminwidget.h
     protocolutils.cpp
-    protocolutils.h
     tcpclient.cpp
-    tcpclient.h
 )
 
 target_link_libraries(BankApp

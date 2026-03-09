@@ -159,6 +159,7 @@ QJsonObject AdminService::createUser(const QJsonObject& req)
             db.rollback();
             return {{"status", "error"}, {"msg", "无法检索新生成的 ID"}};
         }
+        // throw std::runtime_error("Failed to retrieve new user ID"); 破坏性实验
         if (m_accountDao.create(userId, 0.0) == -1) {
             db.rollback();
             return {{"status", "error"}, {"msg", "账户创建失败"}};
