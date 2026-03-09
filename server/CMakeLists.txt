@@ -2,34 +2,23 @@
 qt_add_executable(BankServer
     main.cpp
     protocolutils.cpp
-    protocolutils.h
     database.cpp
-    database.h
     tcpreactor.cpp
-    tcpreactor.h
     dao/userdao.cpp
-    dao/userdao.h
     dao/accountdao.cpp
-    dao/accountdao.h
     dao/transactiondao.cpp
-    dao/transactiondao.h
     service/userservice.cpp
-    service/userservice.h
     service/accountservice.cpp
-    service/accountservice.h
     service/transactionservice.cpp
-    service/transactionservice.h
     service/adminservice.cpp
-    service/adminservice.h
     controller/usercontroller.cpp
-    controller/usercontroller.h
     controller/accountcontroller.cpp
-    controller/accountcontroller.h
     controller/transactioncontroller.cpp
-    controller/transactioncontroller.h
     controller/admincontroller.cpp
-    controller/admincontroller.h
+    snowflake.h
 )
+
+set_target_properties(BankServer PROPERTIES AUTOMOC ON)
 
 target_link_libraries(BankServer
     PRIVATE
