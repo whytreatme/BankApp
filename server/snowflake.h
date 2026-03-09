@@ -84,8 +84,8 @@ private:
     static const qint64 WORKER_ID_BITS = 10;
     static const qint64 SEQUENCE_BITS = 12;
 
-    static const qint64 MAX_WORKER_ID = -1 ^ (-1 << WORKER_ID_BITS);
-    static const qint64 MAX_SEQUENCE = -1 ^ (-1 << SEQUENCE_BITS);
+    static const qint64 MAX_WORKER_ID = (1LL << WORKER_ID_BITS) - 1;
+    static const qint64 MAX_SEQUENCE = (1LL << SEQUENCE_BITS) - 1;
 
     static const qint64 WORKER_ID_SHIFT = SEQUENCE_BITS;
     static const qint64 TIMESTAMP_SHIFT = SEQUENCE_BITS + WORKER_ID_BITS;
