@@ -7,7 +7,21 @@
 #include <QDateTime>
 
 // 密钥：生产环境应从环境变量或配置文件读取
-const QByteArray ProtocolUtils::SECRET_KEY = "BankAppSecretKey2024DoNotHardcode";
+// Retrieve SECRET_KEY from environment variable
+QByteArray ProtocolUtils::SECRET_KEY = "";
+
+bool ProtocolUtils::initConfig()
+{
+    SECRET_KEY = qgetenv("BANK_APP_SECRET_KEY");
+    if(SECRET_KEY.isEmpty()){
+        qCritical() << "FATAL: 未设置环境变量 'BANK_APP_SECRET_KEY'!";
+        return false;        
+    }
+    if(SECRET_KEY.length() < 16){
+        qWarning() << "密钥长度过短，考虑使用至少16位字符作为密钥";
+    }
+    return true;
+}
 
 QByteArray ProtocolUtils::packMessage(quint8 type, const QString& token, const QJsonObject& data)
 {

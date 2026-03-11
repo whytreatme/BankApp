@@ -4,10 +4,15 @@
 
 #include "database.h"
 #include "tcpreactor.h"
+#include "protocolutils.h"
 
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
+    if(!ProtocolUtils::initConfig()){
+        return -1;                   //未设置密钥环境变量，为了安全退出
+    }
+    qInfo() << "环境检查通过，准备启动服务...";
 
     // 设置应用信息
     QCoreApplication::setApplicationName("BankServer");

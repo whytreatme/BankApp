@@ -27,6 +27,8 @@ public:
      */
     static QByteArray packMessage(quint8 type, const QString& token, const QJsonObject& data);
 
+    static bool initConfig();
+    
     /**
      * @brief 解包消息（处理粘包/半包）
      * @param buffer 接收缓冲区 [in/out]，成功后会移除已处理的数据
@@ -57,7 +59,7 @@ public:
 
 private:
     // HMAC 签名密钥（生产环境应从配置文件读取）
-    static const QByteArray SECRET_KEY;
+    static  QByteArray SECRET_KEY;
 
     // Token 有效期（秒），默认 24 小时
     static const qint64 TOKEN_VALIDITY_PERIOD = 86400;

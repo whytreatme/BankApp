@@ -7,7 +7,7 @@
 #include <QDateTime>
 #include <QtEndian>
 
-const QByteArray ProtocolUtils::SECRET_KEY = "BankAppSecretKey2024DoNotHardcode";
+
 
 QByteArray ProtocolUtils::packMessage(quint8 type, const QString& token, const QJsonObject& data)
 {
@@ -86,117 +86,4 @@ bool ProtocolUtils::parseMessage(QByteArray& buffer, quint8& type, QString& toke
     return true;
 }
 
-QString ProtocolUtils::generateToken(const QString& userId, bool isAdmin)
-{
-    // 1. 生成时间戳
-    qint64 timestamp = QDateTime::currentSecsSinceEpoch();
 
-    // 2. 构造 payload: userId:timestamp:role
-    QString role = isAdmin ? "1" : "0";
-    QString payload = QString("%1:%2:%3").arg(userId).arg(timestamp).arg(role);
-
-    // 3. 计算 HMAC-SHA256 签名（只取前 15 字节 = 30 个十六进制字符）
-    QString signature = hmacSha256(payload.toUtf8(), SECRET_KEY);
-
-    // 4. 构造完整 token: userId:timestamp:role:signature
-    QString fullToken = payload + ":" + signature;
-
-    // 5. Base64 编码
-    QByteArray tokenBytes = fullToken.toUtf8().toBase64();
-    QString token = QString::fromUtf8(tokenBytes);
-
-    // 6. 确保 128 字节定长
-    while (token.size() < 128) {
-        token.append('\0');  // 用 null 字符填充
-    }
-
-    return token.left(128);  // 确保不超过 128 字节
-}
-
-bool ProtocolUtils::verifyToken(const QString& token, QString& userId, bool* isAdmin)
-{
-    // 1. 移除填充的 null 字符
-    QString cleanedToken = token;
-    while (cleanedToken.endsWith('\0')) {
-        cleanedToken.chop(1);
-    }
-
-    // 2. Base64 解码
-    QByteArray decoded = QByteArray::fromBase64(cleanedToken.toUtf8());
-    if (decoded.isEmpty()) {
-        return false;  // Base64 解码失败
-    }
-
-    QString fullToken = QString::fromUtf8(decoded);
-
-    // 3. 分割: userId:timestamp:role:signature
-    QStringList parts = fullToken.split(':');
-    if (parts.size() != 4) {
-        return false;
-    }
-
-    QString userIdStr = parts[0];
-    QString timestampStr = parts[1];
-    QString roleStr = parts[2];
-    QString signature = parts[3];
-
-    // 4. 验证签名
-    QString payload = QString("%1:%2:%3").arg(userIdStr).arg(timestampStr).arg(roleStr);
-    QString expectedSig = hmacSha256(payload.toUtf8(), SECRET_KEY);
-
-    if (signature != expectedSig) {
-        return false;  // 签名无效
-    }
-
-    // 5. 验证时间戳（检查是否过期）
-    qint64 timestamp = timestampStr.toLongLong();
-    qint64 current = QDateTime::currentSecsSinceEpoch();
-    if (current - timestamp > TOKEN_VALIDITY_PERIOD) {
-        return false;  // Token 已过期
-    }
-
-    // 6. 返回 userId 和 role
-    userId = userIdStr;
-    if (isAdmin) {
-        *isAdmin = (roleStr == "1");
-    }
-    return true;
-}
-
-QString ProtocolUtils::hmacSha256(const QByteArray& data, const QByteArray& key)
-{
-    const int blockSize = 64;  // SHA-256 块大小
-
-    // 1. 准备密钥
-    QByteArray keyBlock = key;
-    if (keyBlock.size() > blockSize) {
-        keyBlock = QCryptographicHash::hash(key, QCryptographicHash::Sha256);
-    }
-    while (keyBlock.size() < blockSize) {
-        keyBlock.append('\0');
-    }
-
-    // 2. 生成 ipad 和 opad
-    QByteArray iPadded;
-    QByteArray oPadded;
-    for (int i = 0; i < blockSize; ++i) {
-        iPadded.append(static_cast<char>(keyBlock[i] ^ 0x36));  // ipad = 0x36
-        oPadded.append(static_cast<char>(keyBlock[i] ^ 0x5c));  // opad = 0x5c
-    }
-
-    // 3. 计算内层哈希: H(K ^ ipad || data)
-    QByteArray innerHash = QCryptographicHash::hash(
-        iPadded + data,
-        QCryptographicHash::Sha256
-    );
-
-    // 4. 计算外层哈希: H(K ^ opad || innerHash)
-    QByteArray outerHash = QCryptographicHash::hash(
-        oPadded + innerHash,
-        QCryptographicHash::Sha256
-    );
-
-    // 5. 返回前 15 字节的十六进制字符串（30 个字符）
-    QByteArray shortenedHash = outerHash.left(15);
-    return QString::fromUtf8(shortenedHash.toHex());
-}  
