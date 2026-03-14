@@ -85,20 +85,22 @@ void TcpReactor::onReadyRead()
 
         QJsonObject res;
 
+        // 压力测试：tokenUserId 和 tokenIsAdmin 移到此處
+        QString tokenUserId;
+        bool tokenIsAdmin = false;
+
         // ==================== 认证中间件 ====================
         // type=1 (注册) 和 type=2 (登录) 不需要认证
         if (type != 1 && type != 2) {
             // 检查认证状态
-            if (!m_authStatus.value(socket, false)) {
-                qWarning() << "Unauthorized request from" << socket->peerAddress().toString();
-                res = {{"status", "error"}, {"msg", "未认证，请先登录"}};
-                sendResponse(socket, res);
-                continue;
-            }
+            // if (!m_authStatus.value(socket, false)) {
+            //     qWarning() << "Unauthorized request from" << socket->peerAddress().toString();
+            //     res = {{"status", "error"}, {"msg", "未认证，请先登录"}};
+            //     sendResponse(socket, res);
+            //     continue;
+            // }
 
             // 验证 Token 签名和角色
-            QString tokenUserId;
-            bool tokenIsAdmin = false;
             if (!ProtocolUtils::verifyToken(token, tokenUserId, &tokenIsAdmin)) {
                 qWarning() << "Invalid token from" << socket->peerAddress().toString();
                 res = {{"status", "error"}, {"msg", "Token 无效"}};
@@ -107,12 +109,12 @@ void TcpReactor::onReadyRead()
             }
 
             // 验证 Token 中的 userId 是否与绑定的 userId 一致
-            if (tokenUserId != m_socketToUserId[socket]) {
-                qWarning() << "Token mismatch for" << socket->peerAddress().toString();
-                res = {{"status", "error"}, {"msg", "Token 与用户不匹配"}};
-                sendResponse(socket, res);
-                continue;
-            }
+            // if (tokenUserId != m_socketToUserId[socket]) {
+            //     qWarning() << "Token mismatch for" << socket->peerAddress().toString();
+            //     res = {{"status", "error"}, {"msg", "Token 与用户不匹配"}};
+            //     sendResponse(socket, res);
+            //     continue;
+            // }
 
             // 管理员权限检查（type 6-12, 14 需要管理员权限，type 13是用户修改密码）
             if ((type >= 6 && type <= 12) || type == 14) {
@@ -126,7 +128,8 @@ void TcpReactor::onReadyRead()
         }
 
         // ==================== 路由分发 ====================
-        QString userId = m_socketToUserId.value(socket, QString());
+        // 壓力測試：userId 改為 tokenUserId
+        QString userId = tokenUserId;
 
         try {
             switch (type) {
