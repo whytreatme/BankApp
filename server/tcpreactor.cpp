@@ -149,8 +149,10 @@ void TcpReactor::onReadyRead()
                     // 生成 Token 并返回（带 isAdmin 参数）
                     QString token = ProtocolUtils::generateToken(newUserId, isAdmin);
                     res["token"] = token;
+                    qDebug() << ">>> DEBUG TOKEN FOR PYTHON:" << token;
                     qDebug() << "User" << newUserId << "logged in successfully, token generated"
                              << "(admin:" << isAdmin << ")";
+                    
                 }
                 break;
 
