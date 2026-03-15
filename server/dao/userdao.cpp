@@ -9,7 +9,11 @@
 UserDAO::UserDAO() {}
 
 QSqlDatabase UserDAO::getDatabase() {
-    return Database::instance().getDatabase();
+    QSqlDatabase w_db;
+    if(!Database::getThreadConnection(w_db)){
+        qCritical() << "DAO Error: Cannot get datbase access! ";
+    }
+    return w_db;
 }
 
 QString UserDAO::insert(const QString& username, const QString& passwordHash, const QString& salt,
@@ -69,7 +73,7 @@ bool UserDAO::findByUsername(const QString& username, qint64& id, QString& cardN
                             bool* isAdmin, bool* isApproved, QString* fullName, QString* phone, QString* idCard, QString* birthDate) {
     QSqlQuery query(getDatabase());
     query.prepare("SELECT id, card_number, password_hash, salt, is_admin, is_approved, full_name, phone, id_card, birth_date FROM User WHERE username = :name");
-    query.bindValue(":name", username);
+    query.bindValue(":name", username);  //占位符
 
     if (query.exec() && query.next()) {
         id = query.value(0).toLongLong();

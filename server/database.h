@@ -16,7 +16,9 @@
 #include <QDebug>
 #include <QUuid>
 #include <QRandomGenerator>
-#include <QCryptographicHash>    
+#include <QCryptographicHash>   
+
+#include <QThread>
 
 /**
  * @brief 数据库连接配置结构体
@@ -56,6 +58,14 @@ public:
      */
     QString generateCardNumber();
 
+    /**
+     * @brief 多线程获取数据库连接句柄的入口
+     * @return 返回一个句柄
+     */
+    static bool getThreadConnection(QSqlDatabase& w_db);
+    
+    bool isInitialized() const;
+
 private:
     Database();
     ~Database();
@@ -69,6 +79,9 @@ private:
 
     QSqlDatabase m_db;
     bool m_initialized;
+    
+    static bool isConfigValid;
+    static DbConfig m_config; //设置静态成员备份，为多线程作准备
 };
 
 #endif // DATABASE_H

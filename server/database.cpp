@@ -9,6 +9,9 @@
 #include <QCryptographicHash>
 #include <QDateTime>
 
+DbConfig Database::m_config;
+bool Database::isConfigValid = false;
+
 Database::Database() : m_initialized(false) {}
 
 Database::~Database() {
@@ -20,8 +23,51 @@ Database& Database::instance() {
     return inst;
 }
 
+bool Database::getThreadConnection(QSqlDatabase& w_db){
+    QString w_name = QString::number(reinterpret_cast<quintptr>(QThread::currentThreadId()));
+
+    if(!QSqlDatabase::contains(w_name)){
+        if(!isConfigValid){
+            qCritical() << "Error: Database config not initialized!";
+            return false;
+        }
+        w_db = QSqlDatabase::addDatabase("QMYSQL", w_name);
+        w_db.setHostName(m_config.host);
+        w_db.setPort(m_config.port);
+        w_db.setDatabaseName(m_config.databaseName);
+        w_db.setUserName(m_config.username);
+        w_db.setPassword(m_config.password);
+        //尝试进行连接
+        if (!w_db.open()) {
+            qCritical() << "Thread" << w_name << "failed to open database:" << w_db.lastError().text();
+            return false;
+        }
+    }
+    else{  //即便连接已存在，也要重新获取
+        w_db = QSqlDatabase::Database(w_name);  
+
+        if(!w_db.isOpen()){
+            if(!w_db.open()){
+                qCritical() << "Thread" << w_name << "re-open failed!";
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool Database::init(const DbConfig& config) {
     if (m_initialized) return true;
+    if(config.host.isEmpty()
+                  || m_config.databaseName.isEmpty()
+                  || m_config.username.isEmpty()
+                  || m_config.port <= 0;)
+    {
+        qCritical() << "Failed to connect to MySQL: The DbConfig value is null" ; 
+        return false;
+    }
+    m_config = config;
+    isConfigValid = true;
 
     m_db = QSqlDatabase::addDatabase("QMYSQL");
     m_db.setHostName(config.host);
@@ -30,7 +76,7 @@ bool Database::init(const DbConfig& config) {
     m_db.setUserName(config.username);
     m_db.setPassword(config.password);
 
-    if (!m_db.open()) {
+    if (!m_db.open()) {  //这里等待重构，不能多线程共享一个连接
         qCritical() << "Failed to connect to MySQL:" << m_db.lastError().text();
         return false;
     }
