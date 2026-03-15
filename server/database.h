@@ -13,11 +13,10 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
-#include <QString>
 #include <QDebug>
 #include <QUuid>
 #include <QRandomGenerator>
-#include <QCryptographicHash>
+#include <QCryptographicHash>    
 
 /**
  * @brief 数据库连接配置结构体
