@@ -1,18 +1,8 @@
 #include"worktask.h"
-#include"tcpreactor.h"
 #include"protocolutils.h"
 
 
-/*
-WorkTask(QTcpSocket* socket, 
-                 quint8 type,
-                 const QString& token,
-                 const QJsonObject& req,
-                 UserController* userCtrl,
-                 AccountController* accountCtrl,
-                 TransactionController* txnCtrl,
-                 AdminController*  adminCtrl);
-*/
+
 
 WorkTask::WorkTask(QTcpSocket* socket, 
                  quint8 type,
@@ -31,8 +21,8 @@ WorkTask::WorkTask(QTcpSocket* socket,
                   m_txnCtrl(txnCtrl),
                   m_adminCtrl(adminCtrl),
                   m_dbId(std::move(dbId))
-                 {}
-
+                 {setAutoDelete(false); }
+                
 void WorkTask::run(){
     
     try {
@@ -48,7 +38,8 @@ void WorkTask::run(){
                 if (m_res["status"] == "success") {
                     QString newDbId = m_res["user_id"].toString();  // UUID 字符串
                     bool isAdmin = m_res.contains("is_admin") ? m_res["is_admin"].toBool() : false;
-                    handleAuthSuccess(socket, newDbId, isAdmin);
+                    //TcpReactor::handleAuthSuccess(m_socket, newDbId, isAdmin);
+                    emit AuthSuccess(m_socket, newDbId, isAdmin);
 
                     // 生成 Token 并返回（带 isAdmin 参数）
                     QString token = ProtocolUtils::generateToken(newDbId, isAdmin);
@@ -61,18 +52,18 @@ void WorkTask::run(){
                 break;
 
             case 3:  // 查询余额
-                qDebug() << "Routing to AccountController::getBalance for user" << dbId;
-                m_res = m_accountCtrl->getBalance(dbId);
+                qDebug() << "Routing to AccountController::getBalance for user" << m_dbId;
+                m_res = m_accountCtrl->getBalance(m_dbId);
                 break;
 
             case 4:  // 转账
-                qDebug() << "Routing to AccountController::transfer for user" << dbId;
-                m_res = m_accountCtrl->transfer(dbId, m_req);
+                qDebug() << "Routing to AccountController::transfer for user" << m_dbId;
+                m_res = m_accountCtrl->transfer(m_dbId, m_req);
                 break;
 
             case 5:  // 查询交易流水
-                qDebug() << "Routing to TransactionController::getTransactions for user" << dbId;
-                m_res = m_txnCtrl->getTransactions(dbId, m_req);
+                qDebug() << "Routing to TransactionController::getTransactions for user" << m_dbId;
+                m_res = m_txnCtrl->getTransactions(m_dbId, m_req);
                 break;
 
             /*case 6:  // 审批用户（管理员）
@@ -111,7 +102,7 @@ void WorkTask::run(){
                 break;
 
             case 13:  // 用户修改密码
-                qDebug() << "Routing to UserController::changePassword for user" << dbId;
+                qDebug() << "Routing to UserController::changePassword for user" << m_dbId;
                 m_res = m_userCtrl->changePassword(m_req);
                 break;
 
@@ -121,7 +112,7 @@ void WorkTask::run(){
                 break;
 
             default:
-                qWarning() << "Unknown message type:" << type;
+                qWarning() << "Unknown message type:" << m_type;
                 m_res = {{"status", "error"}, {"msg", "未知消息类型"}};
                 break;
             }

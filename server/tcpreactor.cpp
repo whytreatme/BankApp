@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QDataStream>
 #include "worktask.h"
+#include <QThreadPool>
 
 TcpReactor::TcpReactor(quint16 port, QObject* parent)
     : QObject(parent)
@@ -10,6 +11,8 @@ TcpReactor::TcpReactor(quint16 port, QObject* parent)
     , m_server(nullptr)
 {
     m_server = new QTcpServer(this);
+
+    QThreadPool::globalInstance()->setMaxThreadCount(50); // 限制为 50 个，让任务排队，而不是疯狂开连接
 
     // 连接信号槽
     connect(m_server, &QTcpServer::newConnection,
@@ -120,7 +123,7 @@ void TcpReactor::onReadyRead()
             // 管理员权限检查（type 6-12, 14 需要管理员权限，type 13是用户修改密码）
             if ((type >= 6 && type <= 12) || type == 14) {
                 if (!tokenIsAdmin || !m_socketIsAdmin[socket]) {
-                    qWarning() << "Unauthorized admin request from user" << tokenUserId;
+                    qWarning() << "Unauthorized admin request from user" << tokenDbId;
                     res = {{"status", "error"}, {"msg", "需要管理员权限"}};
                     sendResponse(socket, res);
                     continue;
@@ -130,9 +133,13 @@ void TcpReactor::onReadyRead()
 
         // ==================== 路由分发 ====================
         // 壓力測試：userId 改為 tokenUserId
-        QString dbId = tokenDdId;
-        WorkTask(socket, type, std::move(token), std::move(req), &m_userCtrl, &m_accountCtrl,
+        QString dbId = tokenDbId;
+        WorkTask *task = new WorkTask(socket, type, std::move(token), std::move(req), &m_userCtrl, &m_accountCtrl,
                  &m_txnCtrl, &m_adminCtrl, std::move(dbId));
+       
+        connect(task, &WorkTask::taskFinished, this, &TcpReactor::sendResponse, Qt::QueuedConnection);
+        connect(task, &WorkTask::AuthSuccess, this, &TcpReactor::handleAuthSuccess, Qt::QueuedConnection);
+        QThreadPool::globalInstance()->start(task);
         /*try {
             switch (type) {
             case 1:  // 注册
@@ -228,8 +235,6 @@ void TcpReactor::onReadyRead()
             res = {{"status", "error"}, {"msg", "服务器内部错误"}};
         }
         */
-        // 发送响应
-        sendResponse(socket, res);
     }
 }
 
@@ -264,6 +269,8 @@ void TcpReactor::onSocketError(QAbstractSocket::SocketError socketError)
 
 void TcpReactor::sendResponse(QTcpSocket* socket, const QJsonObject& res)
 {
+    if (!socket) return; //  如果 socket 已经死了，直接返回，不操作
+
     if (!socket || socket->state() != QAbstractSocket::ConnectedState) {
         qWarning() << "Cannot send response: socket is not connected";
         return;
@@ -281,7 +288,13 @@ void TcpReactor::sendResponse(QTcpSocket* socket, const QJsonObject& res)
     socket->flush();
 
     qDebug() << "Response sent - status:" << res["status"].toString()
-             << "msg:" << res["msg"].toString();
+             << "msg:" << res["msg"].toString();   
+
+    // 发送完后，顺手把发信号的那个 task 删掉
+    WorkTask* task = qobject_cast<WorkTask*>(sender());
+    if (task) {
+        task->deleteLater(); 
+    }
 }
 
 void TcpReactor::handleAuthSuccess(QTcpSocket* socket, const QString& userId, bool isAdmin)

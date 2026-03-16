@@ -4,13 +4,14 @@
 #include<QObject>
 #include<QTcpSocket>
 #include<QJsonObject>
+#include <QPointer>
 #include<QRunnable>  //用于线程池
 #include"controller/usercontroller.h"
 #include"controller/accountcontroller.h"
 #include"controller/transactioncontroller.h"
 #include"controller/admincontroller.h"
 
-class WorkTask : public QObject, QRunnable{
+class WorkTask : public QObject, public QRunnable{
     Q_OBJECT
 
     public:
@@ -27,13 +28,14 @@ class WorkTask : public QObject, QRunnable{
         void run() override;  //线程池执行入口
     signals:
         void taskFinished(QTcpSocket* socket, QJsonObject res);
+        void AuthSuccess(QTcpSocket* socket, const QString userId, bool isAdmin);
 
     private:
-        QTcpSocket*   m_socket;
+        QPointer<QTcpSocket> m_socket; // 改为弱指针
         quint8        m_type;
         QString       m_token;
-        QJsonOject    m_req;
-        QJsonOject    m_res;
+        QJsonObject   m_req;
+        QJsonObject   m_res;
         QString       m_dbId;
 
         UserController*         m_userCtrl;

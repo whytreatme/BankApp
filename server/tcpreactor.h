@@ -44,7 +44,8 @@ public:
      * @brief 停止服务器
      */
     void stop();
-
+   
+    
 private slots:
     /**
      * @brief 新连接槽函数 - QTcpServer::newConnection 触发
@@ -66,7 +67,6 @@ private slots:
      */
     void onSocketError(QAbstractSocket::SocketError socketError);
 
-private:
     /**
      * @brief 发送响应消息给客户端
      * @param socket 目标 Socket
@@ -82,14 +82,9 @@ private:
      */
     void handleAuthSuccess(QTcpSocket* socket, const QString& userId, bool isAdmin = false);
 
-    /**
-     * @brief 验证 Token
-     * @param token Token 字符串
-     * @param socket 客户端 Socket
-     * @return 验证成功返回 true
-     */
-    bool validateToken(const QString& token, QTcpSocket* socket);
 
+private:
+   
     // ==================== 成员变量 ====================
 
     quint16 m_port;                           // 监听端口
