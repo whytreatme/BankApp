@@ -2,6 +2,7 @@
 #include "protocolutils.h"
 #include <QDebug>
 #include <QDataStream>
+#include "worktask.h"
 
 TcpReactor::TcpReactor(quint16 port, QObject* parent)
     : QObject(parent)
@@ -86,7 +87,7 @@ void TcpReactor::onReadyRead()
         QJsonObject res;
 
         // 压力测试：tokenUserId 和 tokenIsAdmin 移到此處
-        QString tokenUserId;
+        QString tokenDbId;
         bool tokenIsAdmin = false;
 
         // ==================== 认证中间件 ====================
@@ -101,15 +102,15 @@ void TcpReactor::onReadyRead()
             // }
 
             // 验证 Token 签名和角色
-            if (!ProtocolUtils::verifyToken(token, tokenUserId, &tokenIsAdmin)) {
+            if (!ProtocolUtils::verifyToken(token, tokenDbId, &tokenIsAdmin)) {
                 qWarning() << "Invalid token from" << socket->peerAddress().toString();
                 res = {{"status", "error"}, {"msg", "Token 无效"}};
                 sendResponse(socket, res);
                 continue;
             }
 
-            // 验证 Token 中的 userId 是否与绑定的 userId 一致
-            // if (tokenUserId != m_socketToUserId[socket]) {
+            // 验证 Token 中的 tokenDbId 是否与绑定的 dbId 一致
+            // if (tokenDbId != m_socketToUserId[socket]) {
             //     qWarning() << "Token mismatch for" << socket->peerAddress().toString();
             //     res = {{"status", "error"}, {"msg", "Token 与用户不匹配"}};
             //     sendResponse(socket, res);
@@ -129,9 +130,10 @@ void TcpReactor::onReadyRead()
 
         // ==================== 路由分发 ====================
         // 壓力測試：userId 改為 tokenUserId
-        QString userId = tokenUserId;
-
-        try {
+        QString dbId = tokenDdId;
+        WorkTask(socket, type, std::move(token), std::move(req), &m_userCtrl, &m_accountCtrl,
+                 &m_txnCtrl, &m_adminCtrl, std::move(dbId));
+        /*try {
             switch (type) {
             case 1:  // 注册
                 qDebug() << "Routing to UserController::registerUser";
@@ -225,7 +227,7 @@ void TcpReactor::onReadyRead()
             qCritical() << "Exception handling message:" << e.what();
             res = {{"status", "error"}, {"msg", "服务器内部错误"}};
         }
-
+        */
         // 发送响应
         sendResponse(socket, res);
     }

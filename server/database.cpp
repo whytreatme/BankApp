@@ -25,6 +25,8 @@ Database& Database::instance() {
 
 bool Database::getThreadConnection(QSqlDatabase& w_db){
     QString w_name = QString::number(reinterpret_cast<quintptr>(QThread::currentThreadId()));
+    
+    qDebug() << "getThreadConnection 当前线程:" << QThread::currentThread();
 
     if(!QSqlDatabase::contains(w_name)){
         if(!isConfigValid){
@@ -44,7 +46,7 @@ bool Database::getThreadConnection(QSqlDatabase& w_db){
         }
     }
     else{  //即便连接已存在，也要重新获取
-        w_db = QSqlDatabase::Database(w_name);  
+        w_db = QSqlDatabase::database(w_name);
 
         if(!w_db.isOpen()){
             if(!w_db.open()){
@@ -59,9 +61,9 @@ bool Database::getThreadConnection(QSqlDatabase& w_db){
 bool Database::init(const DbConfig& config) {
     if (m_initialized) return true;
     if(config.host.isEmpty()
-                  || m_config.databaseName.isEmpty()
-                  || m_config.username.isEmpty()
-                  || m_config.port <= 0;)
+                  || config.databaseName.isEmpty()
+                  || config.username.isEmpty()
+                  || config.port <= 0)
     {
         qCritical() << "Failed to connect to MySQL: The DbConfig value is null" ; 
         return false;
