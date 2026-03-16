@@ -8,7 +8,11 @@
 AccountDAO::AccountDAO() {}
 
 QSqlDatabase AccountDAO::getDatabase() {
-    return Database::instance().getDatabase();
+    QSqlDatabase w_db;
+    if(!Database::getThreadConnection(w_db)){
+        qCritical() << "DAO Error: Cannot get datbase access! ";
+    }
+    return w_db;
 }
 
 qint64 AccountDAO::create(qint64 userId, double initialBalance) {

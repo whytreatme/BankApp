@@ -8,7 +8,11 @@
 TransactionDAO::TransactionDAO() {}
 
 QSqlDatabase TransactionDAO::getDatabase() {
-    return Database::instance().getDatabase();
+    QSqlDatabase w_db;
+    if(!Database::getThreadConnection(w_db)){
+        qCritical() << "DAO Error: Cannot get datbase access! ";
+    }
+    return w_db;
 }
 
 qint64 TransactionDAO::insert(qint64 fromAccount, qint64 toAccount, double amount, const QString& type, const QString& remark) {
