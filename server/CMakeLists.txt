@@ -17,6 +17,7 @@ qt_add_executable(BankServer
     controller/transactioncontroller.cpp
     controller/admincontroller.cpp
     snowflake.h
+    metricsmanager.h
 )
 
 set_target_properties(BankServer PROPERTIES AUTOMOC ON)
