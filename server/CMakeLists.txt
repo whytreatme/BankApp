@@ -4,6 +4,7 @@ qt_add_executable(BankServer
     protocolutils.cpp
     database.cpp
     tcpreactor.cpp
+    worktask.cpp
     dao/userdao.cpp
     dao/accountdao.cpp
     dao/transactiondao.cpp
