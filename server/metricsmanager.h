@@ -2,7 +2,6 @@
 #pragma once
 #include <QAtomicInt>
 #include <QAtomicInteger> // 用于 qint64
-#include <QInfo>
 #include <algorithm>
 
 class MetricsManager {
