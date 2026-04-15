@@ -1,5 +1,7 @@
 #include"worktask.h"
 #include"protocolutils.h"
+#include<QElapsedTimer>
+#include"metricsmanager.h"
 
 
 
@@ -24,6 +26,8 @@ WorkTask::WorkTask(QTcpSocket* socket,
                  {setAutoDelete(false); }
                 
 void WorkTask::run(){
+    QElapsedTimer timer;
+    timer.start();
     
     try {
             switch (m_type) {
@@ -44,7 +48,7 @@ void WorkTask::run(){
                     // 生成 Token 并返回（带 isAdmin 参数）
                     QString token = ProtocolUtils::generateToken(newDbId, isAdmin);
                     m_res["token"] = token;
-                    qDebug() << ">>> DEBUG TOKEN FOR PYTHON:" << token;
+                    qInfo() << ">>> DEBUG TOKEN FOR PYTHON:" << token;
                     qDebug() << "User" << newDbId << "logged in successfully, token generated"
                              << "(admin:" << isAdmin << ")";
                     
@@ -123,5 +127,11 @@ void WorkTask::run(){
         // 发送响应
        // sendResponse(socket, res);
        emit taskFinished(m_socket, m_res);
+
+        if (m_res["status"] == "success") {
+            MetricsManager::instance().recordSuccess(timer.elapsed());
+        } else {
+            MetricsManager::instance().recordFailure();
+        }
     
 }

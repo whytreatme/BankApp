@@ -263,12 +263,18 @@ void TcpReactor::onSocketError(QAbstractSocket::SocketError socketError)
         return;
     }
 
-    qWarning() << "Socket error for" << socket->peerAddress().toString()
+    qDebug() << "Socket error for" << socket->peerAddress().toString()
                << ":" << socket->errorString();
 }
 
-void TcpReactor::sendResponse(QTcpSocket* socket, const QJsonObject& res)
+void TcpReactor::sendResponse(QPointer<QTcpSocket> socket, const QJsonObject& res)
 {
+    WorkTask* task = qobject_cast<WorkTask*>(sender());
+    if (task) {
+        task->deleteLater(); 
+    }
+
+    
     if (!socket) return; //  如果 socket 已经死了，直接返回，不操作
 
     if (!socket || socket->state() != QAbstractSocket::ConnectedState) {
@@ -290,15 +296,12 @@ void TcpReactor::sendResponse(QTcpSocket* socket, const QJsonObject& res)
     qDebug() << "Response sent - status:" << res["status"].toString()
              << "msg:" << res["msg"].toString();   
 
-    // 发送完后，顺手把发信号的那个 task 删掉
-    WorkTask* task = qobject_cast<WorkTask*>(sender());
-    if (task) {
-        task->deleteLater(); 
-    }
 }
 
-void TcpReactor::handleAuthSuccess(QTcpSocket* socket, const QString& userId, bool isAdmin)
+void TcpReactor::handleAuthSuccess(QPointer<QTcpSocket> socket, const QString& userId, bool isAdmin)
 {
+    if (!socket) return; 
+
     m_authStatus[socket] = true;
     m_socketToUserId[socket] = userId;
     m_socketIsAdmin[socket] = isAdmin;

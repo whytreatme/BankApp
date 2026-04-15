@@ -7,6 +7,7 @@
 #include <QHash>
 #include <QByteArray>
 #include <QJsonObject>
+#include <QPointer>
 #include "controller/usercontroller.h"
 #include "controller/accountcontroller.h"
 #include "controller/transactioncontroller.h"
@@ -72,7 +73,7 @@ private slots:
      * @param socket 目标 Socket
      * @param res 响应 JSON（type=0 表示响应）
      */
-    void sendResponse(QTcpSocket* socket, const QJsonObject& res);
+    void sendResponse(QPointer<QTcpSocket> socket, const QJsonObject& res);
 
     /**
      * @brief 处理认证成功 - 设置认证状态和映射
@@ -80,7 +81,7 @@ private slots:
      * @param userId 用户 ID (UUID)
      * @param isAdmin 是否是管理员
      */
-    void handleAuthSuccess(QTcpSocket* socket, const QString& userId, bool isAdmin = false);
+    void handleAuthSuccess(QPointer<QTcpSocket> socket, const QString& userId, bool isAdmin = false);
 
 
 private:

@@ -1,14 +1,25 @@
-#include <QCoreApplication>
-#include <QDebug>
-#include <QCommandLineParser>
+#include<QCoreApplication>
+#include<QDebug>
+#include<QCommandLineParser>
+#include<QElapsedTimer>
 
 #include "database.h"
 #include "tcpreactor.h"
 #include "protocolutils.h"
+#include"metricsmanager.h"
+
+#include<QPointer>
+#include<QTcpSocket>
+#include<QMetaType> 
 
 int main(int argc, char *argv[])
 {
+
     QCoreApplication app(argc, argv);
+
+    //多线程修复代码
+    qRegisterMetaType<QPointer<QTcpSocket>>("QPointer<QTcpSocket>");
+
     if(!ProtocolUtils::initConfig()){
         return -1;                   //未设置密钥环境变量，为了安全退出
     }
@@ -85,12 +96,19 @@ int main(int argc, char *argv[])
     qDebug() << "========================================\n";
     qDebug() << "Press Ctrl+C to stop the server.\n";
 
+    // 1. 在开启事件循环前，启动总计时器
+    QElapsedTimer totalTestTimer;
+    totalTestTimer.start();
+     MetricsManager::instance().setAppTimer(&totalTestTimer);
+
+
     // ==================== Step 3: 进入事件循环 ====================
     int exitCode = app.exec();
 
     // 清理资源
     qDebug() << "\nShutting down server...";
     reactor.stop();
+   
 
     qDebug() << "Server stopped. Goodbye!";
     return exitCode;

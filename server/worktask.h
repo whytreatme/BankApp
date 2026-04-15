@@ -27,8 +27,8 @@ class WorkTask : public QObject, public QRunnable{
     
         void run() override;  //线程池执行入口
     signals:
-        void taskFinished(QTcpSocket* socket, QJsonObject res);
-        void AuthSuccess(QTcpSocket* socket, const QString userId, bool isAdmin);
+        void taskFinished(QPointer<QTcpSocket> socket, QJsonObject res);
+        void AuthSuccess(QPointer<QTcpSocket> socket, const QString userId, bool isAdmin);
 
     private:
         QPointer<QTcpSocket> m_socket; // 改为弱指针
