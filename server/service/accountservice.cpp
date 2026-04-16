@@ -1,8 +1,9 @@
 #include "accountservice.h"
+#include "../dao/userdao.h"
 #include <QDebug>
-#include <QSqlError>
 #include <QJsonArray>
-#include "../database.h"
+#include <QSqlDatabase>
+#include <stdexcept>
 
 AccountService::AccountService(QObject* parent)
     : QObject(parent)
@@ -14,8 +15,15 @@ AccountService::AccountService(QObject* parent)
 QJsonObject AccountService::getBalance(const QString& userIdStr)
 {
     qint64 userId = userIdStr.toLongLong();
+
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return errorResponse("无法获取数据库连接");
+    }
+
     double balance;
-    if (!m_accountDao.getBalance(userId, balance)) {
+    if (!m_accountDao.getBalance(userId, balance, db)) {
         return errorResponse("余额查询失败");
     }
 
@@ -31,13 +39,21 @@ QJsonObject AccountService::transfer(const QString& fromUserIdStr, const QJsonOb
 
     double amount = req["amount"].toDouble();
     QString targetName = req["to_name"].toString().trimmed();
+
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return errorResponse("无法获取数据库连接");
+    }
+
     UserDAO userDao;
-    
+
     qint64 toUserId = 0;
     QString dummyUsername, dummyHash, dummySalt, actualFullName;
-    
+
     if (req.contains("to_account")) { // 这里前端传的是卡号
-        userDao.findByCardNumber(req["to_account"].toString(), toUserId, dummyUsername, dummyHash, dummySalt, nullptr, nullptr, &actualFullName);
+        userDao.findByCardNumber(req["to_account"].toString(), toUserId, dummyUsername, dummyHash, dummySalt,
+                                  nullptr, nullptr, &actualFullName, nullptr, nullptr, nullptr, db);
     }
 
     if (toUserId == 0) {
@@ -52,52 +68,49 @@ QJsonObject AccountService::transfer(const QString& fromUserIdStr, const QJsonOb
         return transferErrorResponse("不能转账给自己", amount);
     }
 
-    if (userDao.isAdmin(toUserId)) {
+    if (userDao.isAdmin(toUserId, db)) {
         return transferErrorResponse("不能转账给管理员", amount);
     }
 
-    qint64 toAccountId = m_accountDao.getAccountIdByUserId(toUserId);
-    qint64 fromAccountId = m_accountDao.getAccountIdByUserId(fromUserId);
+    qint64 toAccountId = m_accountDao.getAccountIdByUserId(toUserId, db);
+    qint64 fromAccountId = m_accountDao.getAccountIdByUserId(fromUserId, db);
 
     if (toAccountId < 0 || fromAccountId < 0) {
         return transferErrorResponse("账户不存在", amount);
     }
 
-    QSqlDatabase db = Database::instance().getDatabase();
+    // 开启事务
     if (!db.transaction()) {
         return transferErrorResponse("系统错误：事务失败", amount);
     }
 
     try {
         double fromBalance;
-        
-        if (!m_accountDao.getBalance(fromUserId, fromBalance)) {
-            db.rollback();
-            return transferErrorResponse("账户查询失败", amount);
+
+        if (!m_accountDao.getBalance(fromUserId, fromBalance, db)) {
+            throw std::runtime_error("账户查询失败");
         }
 
         if (fromBalance < amount) {
-            db.rollback();
-            return transferErrorResponse("余额不足", amount);
+            throw std::runtime_error("余额不足");
         }
 
-        if (!m_accountDao.updateBalance(fromUserId, -amount) ||
-            !m_accountDao.updateBalanceByAccountId(toAccountId, amount)) {
-            db.rollback();
-            return transferErrorResponse("转账失败", amount);
+        if (!m_accountDao.updateBalance(fromUserId, -amount, db) ||
+            !m_accountDao.updateBalanceByAccountId(toAccountId, amount, db)) {
+            throw std::runtime_error("转账失败");
         }
 
-        if (m_txnDao.insert(fromAccountId, toAccountId, amount, "transfer", req.value("remark").toString()) < 0) {
-            db.rollback();
-            return transferErrorResponse("记录交易失败", amount);
+        if (m_txnDao.insert(fromAccountId, toAccountId, amount, "transfer",
+                            req.value("remark").toString(), db) < 0) {
+            throw std::runtime_error("记录交易失败");
         }
 
         if (!db.commit()) {
-            return transferErrorResponse("系统错误：提交失败", amount);
+            throw std::runtime_error("系统错误：提交失败");
         }
 
         double newBalance;
-        m_accountDao.getBalance(fromUserId, newBalance);
+        m_accountDao.getBalance(fromUserId, newBalance, db);
         return successResponse("转账成功", {{"new_balance", newBalance}});
 
     } catch (const std::exception& e) {
@@ -131,5 +144,11 @@ QJsonObject AccountService::successResponse(const QString& msg, const QJsonObjec
 
 qint64 AccountService::getAccountIdByUserId(const QString& userIdStr)
 {
-    return m_accountDao.getAccountIdByUserId(userIdStr.toLongLong());
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        qCritical() << "Failed to get database connection in getAccountIdByUserId";
+        return -1;
+    }
+
+    return m_accountDao.getAccountIdByUserId(userIdStr.toLongLong(), db);
 }

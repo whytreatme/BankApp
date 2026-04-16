@@ -67,6 +67,8 @@ public:
 private:
     UserDAO m_userDao;
     AccountDAO m_accountDao;
+
+    static QString generateCardNumber();
 };
 
 #endif // USERSERVICE_H

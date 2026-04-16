@@ -1,11 +1,13 @@
 #include "adminservice.h"
+#include "userservice.h"
 #include <QDebug>
 #include <QJsonArray>
 #include <QRandomGenerator>
 #include <QCryptographicHash>
 #include "../database.h"
 #include <QSqlError>
-
+#include <QSqlDatabase>
+#include <stdexcept>
 
 AdminService::AdminService(QObject* parent)
     : QObject(parent)
@@ -23,14 +25,20 @@ QJsonObject AdminService::approveUser(const QJsonObject& req)
     qint64 userId = req["user_id"].toString().toLongLong();
     bool approve = req["approve"].toBool();
 
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    }
+
     QString username, cardNumber;
     bool isAdmin, isApproved;
 
-    if (!m_userDao.findById(userId, username, cardNumber, isAdmin, isApproved)) {
+    if (!m_userDao.findById(userId, username, cardNumber, isAdmin, isApproved, db)) {
         return {{"status", "error"}, {"msg", "用户不存在"}};
     }
 
-    if (!m_userDao.setApproved(userId, approve)) {
+    if (!m_userDao.setApproved(userId, approve, db)) {
         return {{"status", "error"}, {"msg", "更新失败"}};
     }
 
@@ -40,7 +48,14 @@ QJsonObject AdminService::approveUser(const QJsonObject& req)
 QJsonObject AdminService::getPendingUsers(const QJsonObject& req)
 {
     Q_UNUSED(req);
-    QList<QVariantMap> users = m_userDao.getPendingUsers();
+
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    }
+
+    QList<QVariantMap> users = m_userDao.getPendingUsers(db);
     QJsonArray usersArray;
     for (const QVariantMap& user : users) {
         QJsonObject obj;
@@ -56,7 +71,14 @@ QJsonObject AdminService::getPendingUsers(const QJsonObject& req)
 QJsonObject AdminService::getAllUsers(const QJsonObject& req)
 {
     Q_UNUSED(req);
-    QList<QVariantMap> users = m_userDao.getAllUsers();
+
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    }
+
+    QList<QVariantMap> users = m_userDao.getAllUsers(db);
     QJsonArray usersArray;
     for (const QVariantMap& user : users) {
         QJsonObject obj;
@@ -85,12 +107,18 @@ QJsonObject AdminService::setUserBalance(const QJsonObject& req)
     qint64 userId = req["user_id"].toString().toLongLong();
     double newBalance = req["new_balance"].toDouble();
 
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    }
+
     double currentBalance;
-    if (!m_accountDao.getBalance(userId, currentBalance)) {
+    if (!m_accountDao.getBalance(userId, currentBalance, db)) {
         return {{"status", "error"}, {"msg", "账户查询失败"}};
     }
 
-    if (!m_accountDao.updateBalance(userId, newBalance - currentBalance)) {
+    if (!m_accountDao.updateBalance(userId, newBalance - currentBalance, db)) {
         return {{"status", "error"}, {"msg", "更新失败"}};
     }
 
@@ -108,7 +136,13 @@ QJsonObject AdminService::updateUserInfo(const QJsonObject& req)
     int isAdmin = req.contains("is_admin") ? (req["is_admin"].toBool() ? 1 : 0) : -1;
     int isApproved = req.contains("is_approved") ? (req["is_approved"].toBool() ? 1 : 0) : -1;
 
-    if (!m_userDao.updateUserInfo(userId, newUsername, isAdmin, isApproved)) {
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    }
+
+    if (!m_userDao.updateUserInfo(userId, newUsername, isAdmin, isApproved, db)) {
         return {{"status", "error"}, {"msg", "更新失败"}};
     }
 
@@ -117,7 +151,7 @@ QJsonObject AdminService::updateUserInfo(const QJsonObject& req)
 
 QJsonObject AdminService::createUser(const QJsonObject& req)
 {
-    if (!req.contains("full_name") || !req.contains("id_card") || 
+    if (!req.contains("full_name") || !req.contains("id_card") ||
         !req.contains("phone") || !req.contains("birth_date") || !req.contains("address")) {
         return {{"status", "error"}, {"msg", "缺少必要参数"}};
     }
@@ -130,61 +164,70 @@ QJsonObject AdminService::createUser(const QJsonObject& req)
 
     // 生成随机6位数字密码
     QString password = QString::number(QRandomGenerator::global()->bounded(100000, 1000000));
-    
+
     // 生成盐和密码哈希
     QByteArray saltBytes;
-    for (int i = 0; i < 16; i++) {  //生成16位随机数盐值
+    for (int i = 0; i < 16; i++) {
         saltBytes.append(static_cast<char>(QRandomGenerator::global()->bounded(256)));
     }
     QString salt = saltBytes.toHex();
     qDebug() << "Generated salt for new user:" << salt << "length:" << salt.length();
-    
+
     QString passwordHash = QCryptographicHash::hash((password + salt).toUtf8(), QCryptographicHash::Sha256).toHex();
 
-    // 插入用户和获取获取用户ID并创建账户应该处于事务当中  
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    }
 
-    QSqlDatabase db = Database::instance().getDatabase();
-    if(!db.transaction()){
+    // 开启事务
+    if (!db.transaction()) {
         return {{"status", "error"}, {"msg", "系统错误：事务失败"}};
     }
+
     try {
-        // Transaction operations will go here
-        QString cardNumber = m_userDao.insertWithDetails(fullName, idCard, phone, birthDate, address, passwordHash, salt);
-        if (cardNumber.isEmpty()) {
-            db.rollback();
-            return {{"status", "error"}, {"msg", "用户创建失败"}};
+        // 生成卡号
+        QString cardNumber = UserService::generateCardNumber();
+
+        // 生成用户名（使用卡号后8位）
+        QString username = cardNumber.right(8);
+
+        // 插入用户（返回 user_id）
+        qint64 userId = m_userDao.insertWithDetails(fullName, idCard, phone, birthDate, address,
+                                                     cardNumber, username, passwordHash, salt, db);
+        if (userId == -1) {
+            throw std::runtime_error("用户创建失败");
         }
-        qint64 userId;
-        if(!m_userDao.findIdByCardOrUsername(cardNumber, userId)){
-            db.rollback();
-            return {{"status", "error"}, {"msg", "无法检索新生成的 ID"}};
+
+        // 创建账户（初始余额为0）
+        qint64 accountId = m_accountDao.create(userId, 0.0, db);
+        if (accountId == -1) {
+            throw std::runtime_error("账户创建失败");
         }
-        // throw std::runtime_error("Failed to retrieve new user ID"); 破坏性实验
-        if (m_accountDao.create(userId, 0.0) == -1) {
-            db.rollback();
-            return {{"status", "error"}, {"msg", "账户创建失败"}};
-        }
-         // 初始余额为0
+
+        // 提交事务
         if (!db.commit()) {
-            db.rollback();
-            return {{"status", "error"}, {"msg", "系统错误：提交失败"}};
+            throw std::runtime_error("系统错误：提交失败");
         }
 
         return {
-        {"status", "success"},
-        {"msg", "用户创建成功"},
-        {"card_number", cardNumber},
-        {"password", password}
+            {"status", "success"},
+            {"msg", "用户创建成功"},
+            {"card_number", cardNumber},
+            {"password", password}
         };
-    } catch (const std::exception& e) {
-        db.rollback();
-        qCritical() << "Transfer exception:" << e.what();
-        return {{"status", "error"}, {"msg", "系统内部错误"}};
-    } catch (...) {
-        db.rollback();
-        return {{"status", "error"}, {"msg", "未知严重错误"}};
     }
-    
+    catch (const std::exception& e) {
+        db.rollback();
+        qCritical() << "createUser exception:" << e.what();
+        return {{"status", "error"}, {"msg", "用户创建失败"}};
+    }
+    catch (...) {
+        db.rollback();
+        qCritical() << "createUser unknown exception";
+        return {{"status", "error"}, {"msg", "用户创建失败"}};
+    }
 }
 
 QJsonObject AdminService::resetPassword(const QJsonObject& req)
@@ -205,17 +248,23 @@ QJsonObject AdminService::resetPassword(const QJsonObject& req)
         // 生成随机6位数字密码
         newPassword = QString::number(QRandomGenerator::global()->bounded(100000, 1000000));
     }
-    
+
     // 生成新盐和密码哈希
     QByteArray saltBytes;
     for (int i = 0; i < 16; i++) {
         saltBytes.append(static_cast<char>(QRandomGenerator::global()->bounded(256)));
     }
     QString newSalt = saltBytes.toHex();
-    
+
     QString newPasswordHash = QCryptographicHash::hash((newPassword + newSalt).toUtf8(), QCryptographicHash::Sha256).toHex();
 
-    if (!m_userDao.updatePassword(userId, newPasswordHash, newSalt)) {
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    }
+
+    if (!m_userDao.updatePassword(userId, newPasswordHash, newSalt, db)) {
         return {{"status", "error"}, {"msg", "密码修改失败"}};
     }
 
@@ -228,7 +277,7 @@ QJsonObject AdminService::resetPassword(const QJsonObject& req)
 
 QJsonObject AdminService::updateProfile(const QJsonObject& req)
 {
-    if (!req.contains("user_id") || !req.contains("full_name") || 
+    if (!req.contains("user_id") || !req.contains("full_name") ||
         !req.contains("id_card") || !req.contains("phone") || !req.contains("birth_date")) {
         return {{"status", "error"}, {"msg", "缺少必要参数"}};
     }
@@ -243,12 +292,18 @@ QJsonObject AdminService::updateProfile(const QJsonObject& req)
         return {{"status", "error"}, {"msg", "所有字段都不能为空"}};
     }
 
-    if (!m_userDao.updateUserProfile(userId, fullName, idCard, phone, birthDate)) {
+    // 获取数据库连接
+    QSqlDatabase db;
+    if (!Database::getThreadConnection(db)) {
+        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    }
+
+    if (!m_userDao.updateUserProfile(userId, fullName, idCard, phone, birthDate, db)) {
         return {{"status", "error"}, {"msg", "修改个人信息失败"}};
     }
 
     return {
-        {"status", "success"}, 
+        {"status", "success"},
         {"msg", "个人信息修改成功"},
         {"full_name", fullName},
         {"id_card", idCard},

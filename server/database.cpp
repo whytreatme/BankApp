@@ -214,11 +214,3 @@ bool Database::createDefaultAdmin() {
     return accQuery.exec();
 }
 
-QString Database::generateCardNumber() {
-    // 简单实现：6222 + 12位随机数
-    QString card = "6222";
-    for(int i=0; i<12; ++i) {
-        card.append(QString::number(QRandomGenerator::global()->bounded(10)));
-    }
-    return card;
-}

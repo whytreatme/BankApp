@@ -1,19 +1,16 @@
 #include "userdao.h"
-#include "../database.h"
 #include "../snowflake.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug>
-#include <QUuid>
 #include <QSet>
 #include <QHash>
 
 UserDAO::UserDAO() {}
 
-QString UserDAO::insert(const QString& username, const QString& passwordHash, const QString& salt,
-                        bool isAdmin, bool isApproved, QSqlDatabase& db) {
+qint64 UserDAO::insert(const QString& username, const QString& cardNumber, const QString& passwordHash, const QString& salt,
+                       bool isAdmin, bool isApproved, QSqlDatabase& db) {
     qint64 id = Snowflake::instance().nextId();
-    QString cardNumber = Database::instance().generateCardNumber();
 
     QSqlQuery query(db);
     query.prepare("INSERT INTO User (id, card_number, username, password_hash, salt, is_admin, is_approved) "
@@ -28,18 +25,16 @@ QString UserDAO::insert(const QString& username, const QString& passwordHash, co
 
     if (!query.exec()) {
         qCritical() << "Failed to insert user:" << query.lastError().text();
-        return QString();
+        return -1;
     }
-    return cardNumber;
+    return id;
 }
 
-QString UserDAO::insertWithDetails(const QString& fullName, const QString& idCard, const QString& phone,
-                                   const QString& birthDate, const QString& address,
-                                   const QString& passwordHash, const QString& salt, QSqlDatabase& db) {
+qint64 UserDAO::insertWithDetails(const QString& fullName, const QString& idCard, const QString& phone,
+                                  const QString& birthDate, const QString& address,
+                                  const QString& cardNumber, const QString& username,
+                                  const QString& passwordHash, const QString& salt, QSqlDatabase& db) {
     qint64 id = Snowflake::instance().nextId();
-    QString cardNumber = Database::instance().generateCardNumber();
-    // 生成用户名：使用卡号后8位
-    QString username = cardNumber.right(8);  // 简单使用卡号后8位作为用户名
 
     QSqlQuery query(db);
     query.prepare("INSERT INTO User (id, card_number, username, password_hash, salt, is_admin, is_approved, "
@@ -58,16 +53,16 @@ QString UserDAO::insertWithDetails(const QString& fullName, const QString& idCar
 
     if (!query.exec()) {
         qCritical() << "Failed to insert user with details:" << query.lastError().text();
-        return QString();
+        return -1;
     }
-    return cardNumber;
+    return id;
 }
 
 bool UserDAO::findByUsername(const QString& username, qint64& id, QString& cardNumber, QString& passwordHash, QString& salt,
                             bool* isAdmin, bool* isApproved, QString* fullName, QString* phone, QString* idCard, QString* birthDate, QSqlDatabase& db) {
     QSqlQuery query(db);
     query.prepare("SELECT id, card_number, password_hash, salt, is_admin, is_approved, full_name, phone, id_card, birth_date FROM User WHERE username = :name");
-    query.bindValue(":name", username);  //占位符
+    query.bindValue(":name", username);
 
     if (query.exec() && query.next()) {
         id = query.value(0).toLongLong();

@@ -14,18 +14,36 @@ public:
 
     /**
      * @brief 插入新用户
-     * @return 成功返回新用户的 16 位卡号，失败返回空字符串
+     * @param username 用户名
+     * @param cardNumber 16位卡号
+     * @param passwordHash 密码哈希
+     * @param salt 盐值
+     * @param isAdmin 是否为管理员
+     * @param isApproved 是否已批准
+     * @param db 数据库连接
+     * @return 成功返回新用户的 ID，失败返回 -1
      */
-    QString insert(const QString& username, const QString& passwordHash, const QString& salt,
-                   bool isAdmin = false, bool isApproved = false, QSqlDatabase& db);
+    qint64 insert(const QString& username, const QString& cardNumber, const QString& passwordHash, const QString& salt,
+                  bool isAdmin = false, bool isApproved = false, QSqlDatabase& db);
 
     /**
      * @brief 插入新用户（带完整信息）
-     * @return 成功返回新用户的 16 位卡号，失败返回空字符串
+     * @param fullName 全名
+     * @param idCard 身份证号
+     * @param phone 电话
+     * @param birthDate 出生日期
+     * @param address 地址
+     * @param cardNumber 16位卡号
+     * @param username 用户名
+     * @param passwordHash 密码哈希
+     * @param salt 盐值
+     * @param db 数据库连接
+     * @return 成功返回新用户的 ID，失败返回 -1
      */
-    QString insertWithDetails(const QString& fullName, const QString& idCard, const QString& phone,
-                              const QString& birthDate, const QString& address,
-                              const QString& passwordHash, const QString& salt, QSqlDatabase& db);
+    qint64 insertWithDetails(const QString& fullName, const QString& idCard, const QString& phone,
+                             const QString& birthDate, const QString& address,
+                             const QString& cardNumber, const QString& username,
+                             const QString& passwordHash, const QString& salt, QSqlDatabase& db);
 
     /**
      * @brief 根据用户名查询用户信息

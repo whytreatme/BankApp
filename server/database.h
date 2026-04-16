@@ -53,10 +53,7 @@ public:
      */
     void close();
 
-    /**
-     * @brief 生成唯一的 16 位银行卡号
-     */
-    QString generateCardNumber();
+  
 
     /**
      * @brief 多线程获取数据库连接句柄的入口
