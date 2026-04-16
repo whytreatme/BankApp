@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include "../dao/transactiondao.h"
 #include "../dao/accountdao.h"
+#include "../dao/userdao.h"
 
 /**
  * @brief 交易服务层 - 处理交易相关的业务逻辑
@@ -58,6 +59,7 @@ public:
 private:
     TransactionDAO m_txnDao;
     AccountDAO m_accountDao;
+    UserDAO m_userDao;
 
     /**
      * @brief 构造错误响应
