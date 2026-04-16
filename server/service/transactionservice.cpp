@@ -26,7 +26,7 @@ QJsonObject TransactionService::getTransactions(const QString& userIdStr, const 
     }
 
     // 第 1 步：获取交易记录
-    QList<QVariantMap> txnList = m_txnDao.findByUserId(userId, limit, db);
+    QList<QVariantMap> txnList = m_txnDao.findByUserId(db, userId, limit);
 
     // 第 2 步：收集所有 Account ID
     QSet<qint64> accountIds;
@@ -38,7 +38,7 @@ QJsonObject TransactionService::getTransactions(const QString& userIdStr, const 
     }
 
     // 第 3 步：批量查询 Account ID 到 User ID 的映射
-    QHash<qint64, qint64> accountIdToUserId = m_accountDao.getUserIdsByAccountIds(accountIds, db);
+    QHash<qint64, qint64> accountIdToUserId = m_accountDao.getUserIdsByAccountIds(db, accountIds);
 
     // 第 4 步：收集所有需要查询的 User ID
     QSet<qint64> userIds;
@@ -47,7 +47,7 @@ QJsonObject TransactionService::getTransactions(const QString& userIdStr, const 
     }
 
     // 第 5 步：批量查询所有用户信息
-    QHash<qint64, QVariantMap> userInfoMap = m_userDao.findByIds(userIds, db);
+    QHash<qint64, QVariantMap> userInfoMap = m_userDao.findByIds(db, userIds);
 
     // 第 6 步：组装 JSON 响应（全部从内存中查找，无数据库查询）
     QJsonArray transactions;
@@ -95,7 +95,7 @@ QJsonObject TransactionService::getAllTransactions(const QJsonObject& req)
     }
 
     // 第 1 步：获取交易记录
-    QList<QVariantMap> txnList = m_txnDao.findAll(limit, db);
+    QList<QVariantMap> txnList = m_txnDao.findAll(db, limit);
 
     // 第 2 步：收集所有 Account ID
     QSet<qint64> accountIds;
@@ -107,7 +107,7 @@ QJsonObject TransactionService::getAllTransactions(const QJsonObject& req)
     }
 
     // 第 3 步：批量查询 Account ID 到 User ID 的映射
-    QHash<qint64, qint64> accountIdToUserId = m_accountDao.getUserIdsByAccountIds(accountIds, db);
+    QHash<qint64, qint64> accountIdToUserId = m_accountDao.getUserIdsByAccountIds(db, accountIds);
 
     // 第 4 步：收集所有需要查询的 User ID
     QSet<qint64> userIds;
@@ -116,7 +116,7 @@ QJsonObject TransactionService::getAllTransactions(const QJsonObject& req)
     }
 
     // 第 5 步：批量查询所有用户信息
-    QHash<qint64, QVariantMap> userInfoMap = m_userDao.findByIds(userIds, db);
+    QHash<qint64, QVariantMap> userInfoMap = m_userDao.findByIds(db, userIds);
 
     // 第 6 步：组装 JSON 响应（全部从内存中查找，无数据库查询）
     QJsonArray transactions;

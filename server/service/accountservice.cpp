@@ -23,7 +23,7 @@ QJsonObject AccountService::getBalance(const QString& userIdStr)
     }
 
     double balance;
-    if (!m_accountDao.getBalance(userId, balance, db)) {
+    if (!m_accountDao.getBalance(db, userId, balance)) {
         return errorResponse("余额查询失败");
     }
 
@@ -52,8 +52,8 @@ QJsonObject AccountService::transfer(const QString& fromUserIdStr, const QJsonOb
     QString dummyUsername, dummyHash, dummySalt, actualFullName;
 
     if (req.contains("to_account")) { // 这里前端传的是卡号
-        userDao.findByCardNumber(req["to_account"].toString(), toUserId, dummyUsername, dummyHash, dummySalt,
-                                  nullptr, nullptr, &actualFullName, nullptr, nullptr, nullptr, db);
+        userDao.findByCardNumber(db, req["to_account"].toString(), toUserId, dummyUsername, dummyHash, dummySalt,
+                                  nullptr, nullptr, &actualFullName, nullptr, nullptr, nullptr);
     }
 
     if (toUserId == 0) {
@@ -68,12 +68,12 @@ QJsonObject AccountService::transfer(const QString& fromUserIdStr, const QJsonOb
         return transferErrorResponse("不能转账给自己", amount);
     }
 
-    if (userDao.isAdmin(toUserId, db)) {
+    if (userDao.isAdmin(db, toUserId)) {
         return transferErrorResponse("不能转账给管理员", amount);
     }
 
-    qint64 toAccountId = m_accountDao.getAccountIdByUserId(toUserId, db);
-    qint64 fromAccountId = m_accountDao.getAccountIdByUserId(fromUserId, db);
+    qint64 toAccountId = m_accountDao.getAccountIdByUserId(db, toUserId);
+    qint64 fromAccountId = m_accountDao.getAccountIdByUserId(db, fromUserId);
 
     if (toAccountId < 0 || fromAccountId < 0) {
         return transferErrorResponse("账户不存在", amount);
@@ -87,7 +87,7 @@ QJsonObject AccountService::transfer(const QString& fromUserIdStr, const QJsonOb
     try {
         double fromBalance;
 
-        if (!m_accountDao.getBalance(fromUserId, fromBalance, db)) {
+        if (!m_accountDao.getBalance(db, fromUserId, fromBalance)) {
             throw std::runtime_error("账户查询失败");
         }
 
@@ -95,13 +95,13 @@ QJsonObject AccountService::transfer(const QString& fromUserIdStr, const QJsonOb
             throw std::runtime_error("余额不足");
         }
 
-        if (!m_accountDao.updateBalance(fromUserId, -amount, db) ||
-            !m_accountDao.updateBalanceByAccountId(toAccountId, amount, db)) {
+        if (!m_accountDao.updateBalance(db, fromUserId, -amount) ||
+            !m_accountDao.updateBalanceByAccountId(db, toAccountId, amount)) {
             throw std::runtime_error("转账失败");
         }
 
-        if (m_txnDao.insert(fromAccountId, toAccountId, amount, "transfer",
-                            req.value("remark").toString(), db) < 0) {
+        if (m_txnDao.insert(db, fromAccountId, toAccountId, amount, "transfer",
+                            req.value("remark").toString()) < 0) {
             throw std::runtime_error("记录交易失败");
         }
 
@@ -110,7 +110,7 @@ QJsonObject AccountService::transfer(const QString& fromUserIdStr, const QJsonOb
         }
 
         double newBalance;
-        m_accountDao.getBalance(fromUserId, newBalance, db);
+        m_accountDao.getBalance(db, fromUserId, newBalance);
         return successResponse("转账成功", {{"new_balance", newBalance}});
 
     } catch (const std::exception& e) {
@@ -150,5 +150,5 @@ qint64 AccountService::getAccountIdByUserId(const QString& userIdStr)
         return -1;
     }
 
-    return m_accountDao.getAccountIdByUserId(userIdStr.toLongLong(), db);
+    return m_accountDao.getAccountIdByUserId(db, userIdStr.toLongLong());
 }

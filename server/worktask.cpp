@@ -133,5 +133,5 @@ void WorkTask::run(){
         } else {
             MetricsManager::instance().recordFailure();
         }
-    
+    this->deleteLater();
 }

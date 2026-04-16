@@ -64,11 +64,13 @@ public:
      */
     QJsonObject changePassword(const QJsonObject& req);
 
+    
+    static QString generateCardNumber();
+
 private:
     UserDAO m_userDao;
     AccountDAO m_accountDao;
 
-    static QString generateCardNumber();
 };
 
 #endif // USERSERVICE_H

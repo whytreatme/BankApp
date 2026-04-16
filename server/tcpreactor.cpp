@@ -53,7 +53,7 @@ void TcpReactor::onNewConnection()
     // 初始化该 Socket 的状态
     m_buffers[clientSocket] = QByteArray();
     m_authStatus[clientSocket] = false;
-    m_socketToUserId[clientSocket] = 0;
+    m_socketToUserId[clientSocket] = "";
     m_socketIsAdmin[clientSocket] = false;
 
     qDebug() << "New client connected:" << clientSocket->peerAddress().toString()
@@ -140,101 +140,7 @@ void TcpReactor::onReadyRead()
         connect(task, &WorkTask::taskFinished, this, &TcpReactor::sendResponse, Qt::QueuedConnection);
         connect(task, &WorkTask::AuthSuccess, this, &TcpReactor::handleAuthSuccess, Qt::QueuedConnection);
         QThreadPool::globalInstance()->start(task);
-        /*try {
-            switch (type) {
-            case 1:  // 注册
-                qDebug() << "Routing to UserController::registerUser";
-                res = m_userCtrl.registerUser(req);
-                break;
-
-            case 2:  // 登录
-                qDebug() << "Routing to UserController::login";
-                res = m_userCtrl.login(req);
-                if (res["status"] == "success") {
-                    QString newUserId = res["user_id"].toString();  // UUID 字符串
-                    bool isAdmin = res.contains("is_admin") ? res["is_admin"].toBool() : false;
-                    handleAuthSuccess(socket, newUserId, isAdmin);
-
-                    // 生成 Token 并返回（带 isAdmin 参数）
-                    QString token = ProtocolUtils::generateToken(newUserId, isAdmin);
-                    res["token"] = token;
-                    qDebug() << ">>> DEBUG TOKEN FOR PYTHON:" << token;
-                    qDebug() << "User" << newUserId << "logged in successfully, token generated"
-                             << "(admin:" << isAdmin << ")";
-                    
-                }
-                break;
-
-            case 3:  // 查询余额
-                qDebug() << "Routing to AccountController::getBalance for user" << userId;
-                res = m_accountCtrl.getBalance(userId);
-                break;
-
-            case 4:  // 转账
-                qDebug() << "Routing to AccountController::transfer for user" << userId;
-                res = m_accountCtrl.transfer(userId, req);
-                break;
-
-            case 5:  // 查询交易流水
-                qDebug() << "Routing to TransactionController::getTransactions for user" << userId;
-                res = m_txnCtrl.getTransactions(userId, req);
-                break;
-
-            case 6:  // 审批用户（管理员）
-                qDebug() << "Routing to AdminController::approveUser";
-                res = m_adminCtrl.approveUser(req);
-                break;
-
-            case 7:  // 获取待审批用户列表（管理员）
-                qDebug() << "Routing to AdminController::getPendingUsers";
-                res = m_adminCtrl.getPendingUsers(req);
-                break;
-
-            case 8:  // 获取所有用户信息（管理员）
-                qDebug() << "Routing to AdminController::getAllUsers";
-                res = m_adminCtrl.getAllUsers(req);
-                break;
-
-            case 9:  // 修改用户余额（管理员）
-                qDebug() << "Routing to AdminController::setUserBalance";
-                res = m_adminCtrl.setUserBalance(req);
-                break;
-
-            case 10:  // 修改用户信息（管理员）
-                qDebug() << "Routing to AdminController::updateUserInfo";
-                res = m_adminCtrl.updateUserInfo(req);
-                break;
-
-            case 11:  // 添加用户（管理员）
-                qDebug() << "Routing to AdminController::createUser";
-                res = m_adminCtrl.createUser(req);
-                break;
-
-            case 12:  // 重置密码（管理员）
-                qDebug() << "Routing to AdminController::resetPassword";
-                res = m_adminCtrl.resetPassword(req);
-                break;
-
-            case 13:  // 用户修改密码
-                qDebug() << "Routing to UserController::changePassword for user" << userId;
-                res = m_userCtrl.changePassword(req);
-                break;
-
-            case 14:  // 管理员修改个人信息
-                qDebug() << "Routing to AdminController::updateProfile";
-                res = m_adminCtrl.updateProfile(req);
-                break;
-
-            default:
-                qWarning() << "Unknown message type:" << type;
-                res = {{"status", "error"}, {"msg", "未知消息类型"}};
-                break;
-            }
-        } catch (const std::exception& e) {
-            qCritical() << "Exception handling message:" << e.what();
-            res = {{"status", "error"}, {"msg", "服务器内部错误"}};
-        }
-        */
+       
     }
 }
 
@@ -269,10 +175,10 @@ void TcpReactor::onSocketError(QAbstractSocket::SocketError socketError)
 
 void TcpReactor::sendResponse(QPointer<QTcpSocket> socket, const QJsonObject& res)
 {
-    WorkTask* task = qobject_cast<WorkTask*>(sender());
-    if (task) {
-        task->deleteLater(); 
-    }
+    //WorkTask* task = qobject_cast<WorkTask*>(sender());
+    //if (task) {
+    //    task->deleteLater(); 
+    //}
 
     
     if (!socket) return; //  如果 socket 已经死了，直接返回，不操作

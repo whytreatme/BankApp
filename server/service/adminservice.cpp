@@ -34,11 +34,11 @@ QJsonObject AdminService::approveUser(const QJsonObject& req)
     QString username, cardNumber;
     bool isAdmin, isApproved;
 
-    if (!m_userDao.findById(userId, username, cardNumber, isAdmin, isApproved, db)) {
+    if (!m_userDao.findById(db, userId, username, cardNumber, isAdmin, isApproved)) {
         return {{"status", "error"}, {"msg", "用户不存在"}};
     }
 
-    if (!m_userDao.setApproved(userId, approve, db)) {
+    if (!m_userDao.setApproved(db, userId, approve)) {
         return {{"status", "error"}, {"msg", "更新失败"}};
     }
 
@@ -114,11 +114,11 @@ QJsonObject AdminService::setUserBalance(const QJsonObject& req)
     }
 
     double currentBalance;
-    if (!m_accountDao.getBalance(userId, currentBalance, db)) {
+    if (!m_accountDao.getBalance(db, userId, currentBalance)) {
         return {{"status", "error"}, {"msg", "账户查询失败"}};
     }
 
-    if (!m_accountDao.updateBalance(userId, newBalance - currentBalance, db)) {
+    if (!m_accountDao.updateBalance(db, userId, newBalance - currentBalance)) {
         return {{"status", "error"}, {"msg", "更新失败"}};
     }
 
@@ -142,7 +142,7 @@ QJsonObject AdminService::updateUserInfo(const QJsonObject& req)
         return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
     }
 
-    if (!m_userDao.updateUserInfo(userId, newUsername, isAdmin, isApproved, db)) {
+    if (!m_userDao.updateUserInfo(db, userId, newUsername, isAdmin, isApproved)) {
         return {{"status", "error"}, {"msg", "更新失败"}};
     }
 
@@ -194,14 +194,14 @@ QJsonObject AdminService::createUser(const QJsonObject& req)
         QString username = cardNumber.right(8);
 
         // 插入用户（返回 user_id）
-        qint64 userId = m_userDao.insertWithDetails(fullName, idCard, phone, birthDate, address,
-                                                     cardNumber, username, passwordHash, salt, db);
+        qint64 userId = m_userDao.insertWithDetails(db, fullName, idCard, phone, birthDate, address,
+                                                     cardNumber, username, passwordHash, salt);
         if (userId == -1) {
             throw std::runtime_error("用户创建失败");
         }
 
         // 创建账户（初始余额为0）
-        qint64 accountId = m_accountDao.create(userId, 0.0, db);
+        qint64 accountId = m_accountDao.create(db, userId, 0.0);
         if (accountId == -1) {
             throw std::runtime_error("账户创建失败");
         }
@@ -264,7 +264,7 @@ QJsonObject AdminService::resetPassword(const QJsonObject& req)
         return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
     }
 
-    if (!m_userDao.updatePassword(userId, newPasswordHash, newSalt, db)) {
+    if (!m_userDao.updatePassword(db, userId, newPasswordHash, newSalt)) {
         return {{"status", "error"}, {"msg", "密码修改失败"}};
     }
 
@@ -298,7 +298,7 @@ QJsonObject AdminService::updateProfile(const QJsonObject& req)
         return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
     }
 
-    if (!m_userDao.updateUserProfile(userId, fullName, idCard, phone, birthDate, db)) {
+    if (!m_userDao.updateUserProfile(db, userId, fullName, idCard, phone, birthDate)) {
         return {{"status", "error"}, {"msg", "修改个人信息失败"}};
     }
 

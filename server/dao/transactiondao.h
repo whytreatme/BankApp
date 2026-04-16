@@ -3,6 +3,7 @@
 
 #include <QList>
 #include <QVariantMap>
+#include <QMetaType>
 #include <QSqlDatabase>
 
 class TransactionDAO
@@ -11,20 +12,11 @@ public:
     TransactionDAO();
     ~TransactionDAO() = default;
 
-    /**
-     * @brief 插入交易记录
-     */
-    qint64 insert(qint64 fromAccount, qint64 toAccount, double amount, const QString& type, const QString& remark = "", QSqlDatabase& db);
+    qint64 insert(QSqlDatabase& db, qint64 fromAccount, qint64 toAccount, double amount, const QString& type, const QString& remark = "");
 
-    /**
-     * @brief 查询用户的交易历史
-     */
-    QList<QVariantMap> findByUserId(qint64 userId, int limit = 20, QSqlDatabase& db);
+    QList<QVariantMap> findByUserId(QSqlDatabase& db, qint64 userId, int limit = 20);
 
-    /**
-     * @brief 查询所有交易记录（管理员用）
-     */
-    QList<QVariantMap> findAll(int limit = 100, QSqlDatabase& db);
+    QList<QVariantMap> findAll(QSqlDatabase& db, int limit = 100);
 };
 
 #endif // TRANSACTIONDAO_H

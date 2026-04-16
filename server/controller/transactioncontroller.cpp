@@ -1,5 +1,7 @@
 #include "transactioncontroller.h"
 #include "../dao/userdao.h"
+#include "../database.h"     
+#include <QSqlDatabase>      
 #include <QDebug>
 
 TransactionController::TransactionController(QObject* parent)
@@ -23,12 +25,20 @@ QJsonObject TransactionController::getTransactions(const QString& userId, const 
 
     qDebug() << "处理交易历史查询请求: userId =" << userId << ", limit =" << limit;
 
+  
+
     // 3. 检查用户是否是管理员
+    QSqlDatabase db;  // <--- 必须先声明 db 变量
+    if (!Database::getThreadConnection(db)) {
+        return errorResponse("无法获取数据库连接");
+    }
+
     UserDAO userDao;
     QString username, cardNumber;
     bool isAdmin = false, isApproved = false;
-    bool userExists = userDao.findById(userId.toLongLong(), username, cardNumber, isAdmin, isApproved);
-
+    
+    // 把上面获取到的 db 传给 findById 的第一个参数
+    bool userExists = userDao.findById(db, userId.toLongLong(), username, cardNumber, isAdmin, isApproved);
     // 4. 根据用户身份调用不同的 Service 方法
     QJsonObject res;
     if (userExists && isAdmin) {

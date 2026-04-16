@@ -13,38 +13,38 @@ public:
     /**
      * @brief 创建账户
      */
-    qint64 create(qint64 userId, double initialBalance, QSqlDatabase& db);
+    qint64 create(QSqlDatabase& db, qint64 userId, double initialBalance);
 
     /**
      * @brief 获取用户余额
      */
-    bool getBalance(qint64 userId, double& balance, QSqlDatabase& db);
+    bool getBalance(QSqlDatabase& db, qint64 userId, double& balance);
 
     /**
      * @brief 更新余额（增减指定金额）
      */
-    bool updateBalance(qint64 userId, double delta, QSqlDatabase& db);
+    bool updateBalance(QSqlDatabase& db, qint64 userId, double delta);
 
     /**
      * @brief 根据 user_id 获取 account_id
      */
-    qint64 getAccountIdByUserId(qint64 userId, QSqlDatabase& db);
+    qint64 getAccountIdByUserId(QSqlDatabase& db, qint64 userId);
 
     /**
      * @brief 根据 account_id 更新余额
      */
-    bool updateBalanceByAccountId(qint64 accountId, double delta, QSqlDatabase& db);
+    bool updateBalanceByAccountId(QSqlDatabase& db, qint64 accountId, double delta);
 
     /**
      * @brief 根据 account_id 获取 user_id
      */
-    qint64 getUserIdByAccountId(qint64 accountId, QSqlDatabase& db);
+    qint64 getUserIdByAccountId(QSqlDatabase& db, qint64 accountId);
 
     /**
      * @brief 根据 Account ID 集合获取所有的 Account ID 到 User ID 映射
      * @return QHash，键为 Account ID，值为对应的 User ID
      */
-    QHash<qint64, qint64> getUserIdsByAccountIds(const QSet<qint64>& accountIds, QSqlDatabase& db);
+    QHash<qint64, qint64> getUserIdsByAccountIds(QSqlDatabase& db, const QSet<qint64>& accountIds);
 };
 
 #endif // ACCOUNTDAO_H

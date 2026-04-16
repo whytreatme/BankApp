@@ -12,100 +12,47 @@ public:
     UserDAO();
     ~UserDAO() = default;
 
-    /**
-     * @brief 插入新用户
-     * @param username 用户名
-     * @param cardNumber 16位卡号
-     * @param passwordHash 密码哈希
-     * @param salt 盐值
-     * @param isAdmin 是否为管理员
-     * @param isApproved 是否已批准
-     * @param db 数据库连接
-     * @return 成功返回新用户的 ID，失败返回 -1
-     */
-    qint64 insert(const QString& username, const QString& cardNumber, const QString& passwordHash, const QString& salt,
-                  bool isAdmin = false, bool isApproved = false, QSqlDatabase& db);
+    qint64 insert(QSqlDatabase& db, const QString& username, const QString& cardNumber, const QString& passwordHash, const QString& salt,
+                  bool isAdmin = false, bool isApproved = false);
 
-    /**
-     * @brief 插入新用户（带完整信息）
-     * @param fullName 全名
-     * @param idCard 身份证号
-     * @param phone 电话
-     * @param birthDate 出生日期
-     * @param address 地址
-     * @param cardNumber 16位卡号
-     * @param username 用户名
-     * @param passwordHash 密码哈希
-     * @param salt 盐值
-     * @param db 数据库连接
-     * @return 成功返回新用户的 ID，失败返回 -1
-     */
-    qint64 insertWithDetails(const QString& fullName, const QString& idCard, const QString& phone,
+    qint64 insertWithDetails(QSqlDatabase& db, const QString& fullName, const QString& idCard, const QString& phone,
                              const QString& birthDate, const QString& address,
                              const QString& cardNumber, const QString& username,
-                             const QString& passwordHash, const QString& salt, QSqlDatabase& db);
+                             const QString& passwordHash, const QString& salt);
 
-    /**
-     * @brief 根据用户名查询用户信息
-     */
-    bool findByUsername(const QString& username, qint64& id, QString& cardNumber, QString& passwordHash, QString& salt,
+    bool findByUsername(QSqlDatabase& db, const QString& username, qint64& id, QString& cardNumber, QString& passwordHash, QString& salt,
                        bool* isAdmin = nullptr, bool* isApproved = nullptr, QString* fullName = nullptr,
-                       QString* phone = nullptr, QString* idCard = nullptr, QString* birthDate = nullptr, QSqlDatabase& db);
+                       QString* phone = nullptr, QString* idCard = nullptr, QString* birthDate = nullptr);
 
-    /**
-     * @brief 根据卡号查询用户信息
-     */
-    bool findByCardNumber(const QString& cardNumber, qint64& id, QString& username, QString& passwordHash, QString& salt,
+    bool findByCardNumber(QSqlDatabase& db, const QString& cardNumber, qint64& id, QString& username, QString& passwordHash, QString& salt,
                           bool* isAdmin = nullptr, bool* isApproved = nullptr, QString* fullName = nullptr,
-                          QString* phone = nullptr, QString* idCard = nullptr, QString* birthDate = nullptr, QSqlDatabase& db);
+                          QString* phone = nullptr, QString* idCard = nullptr, QString* birthDate = nullptr);
 
-    /**
-     * @brief 检查用户名是否存在
-     */
-    bool exists(const QString& username, QSqlDatabase& db);
+    bool exists(QSqlDatabase& db, const QString& username);
 
-    /**
-     * @brief 根据用户ID查询用户信息
-     */
-    bool findById(qint64 id, QString& username, QString& cardNumber, bool& isAdmin, bool& isApproved, QSqlDatabase& db);
+    bool findById(QSqlDatabase& db, qint64 id, QString& username, QString& cardNumber, bool& isAdmin, bool& isApproved);
 
-    /**
-     * @brief 根据卡号或用户名查询用户内部ID
-     */
-    bool findIdByCardOrUsername(const QString& val, qint64& id, QSqlDatabase& db);
+    bool findIdByCardOrUsername(QSqlDatabase& db, const QString& val, qint64& id);
 
-    bool isAdmin(qint64 id, QSqlDatabase& db);
-    bool isApproved(qint64 id, QSqlDatabase& db);
-    bool setAdmin(qint64 id, bool isAdmin, QSqlDatabase& db);
-    bool setApproved(qint64 id, bool isApproved, QSqlDatabase& db);
+    bool isAdmin(QSqlDatabase& db, qint64 id);
+    bool isApproved(QSqlDatabase& db, qint64 id);
+    bool setAdmin(QSqlDatabase& db, qint64 id, bool isAdmin);
+    bool setApproved(QSqlDatabase& db, qint64 id, bool isApproved);
 
     QList<QVariantMap> getPendingUsers(QSqlDatabase& db);
     QList<QVariantMap> getAllUsers(QSqlDatabase& db);
 
-    bool updateUserInfo(qint64 id, const QString& newUsername = QString(),
-                       int isAdmin = -1, int isApproved = -1, QSqlDatabase& db);
+    bool updateUserInfo(QSqlDatabase& db, qint64 id, const QString& newUsername = QString(),
+                       int isAdmin = -1, int isApproved = -1);
 
-    /**
-     * @brief 用户修改个人信息
-     */
-    bool updateUserProfile(qint64 id, const QString& fullName, const QString& idCard,
-                           const QString& phone, const QString& birthDate, QSqlDatabase& db);
+    bool updateUserProfile(QSqlDatabase& db, qint64 id, const QString& fullName, const QString& idCard,
+                           const QString& phone, const QString& birthDate);
 
-    /**
-     * @brief 更新用户密码
-     */
-    bool updatePassword(qint64 id, const QString& newPasswordHash, const QString& newSalt, QSqlDatabase& db);
+    bool updatePassword(QSqlDatabase& db, qint64 id, const QString& newPasswordHash, const QString& newSalt);
 
-    /**
-     * @brief 获取用户密码哈希和盐（用于验证旧密码）
-     */
-    bool getPasswordInfo(qint64 id, QString& passwordHash, QString& salt, QSqlDatabase& db);
+    bool getPasswordInfo(QSqlDatabase& db, qint64 id, QString& passwordHash, QString& salt);
 
-    /**
-     * @brief 根据 ID 集合查询多个用户信息
-     * @return QHash，键为用户 ID，值为包含 id, username, card_number 的 QVariantMap
-     */
-    QHash<qint64, QVariantMap> findByIds(const QSet<qint64>& ids, QSqlDatabase& db);
+    QHash<qint64, QVariantMap> findByIds(QSqlDatabase& db, const QSet<qint64>& ids);
 };
 
 #endif // USERDAO_H

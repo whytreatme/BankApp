@@ -8,7 +8,7 @@
 
 AccountDAO::AccountDAO() {}
 
-qint64 AccountDAO::create(qint64 userId, double initialBalance, QSqlDatabase& db) {
+qint64 AccountDAO::create(QSqlDatabase& db, qint64 userId, double initialBalance) {
     qint64 id = Snowflake::instance().nextId();
     QSqlQuery query(db);
     query.prepare("INSERT INTO Account (id, user_id, balance) VALUES (:id, :user_id, :balance)");
@@ -23,7 +23,7 @@ qint64 AccountDAO::create(qint64 userId, double initialBalance, QSqlDatabase& db
     return id;
 }
 
-bool AccountDAO::getBalance(qint64 userId, double& balance, QSqlDatabase& db) {
+bool AccountDAO::getBalance(QSqlDatabase& db, qint64 userId, double& balance) {
     QSqlQuery query(db);
     query.prepare("SELECT balance FROM Account WHERE user_id = :user_id");
     query.bindValue(":user_id", userId);
@@ -34,7 +34,7 @@ bool AccountDAO::getBalance(qint64 userId, double& balance, QSqlDatabase& db) {
     return false;
 }
 
-bool AccountDAO::updateBalance(qint64 userId, double delta, QSqlDatabase& db) {
+bool AccountDAO::updateBalance(QSqlDatabase& db, qint64 userId, double delta) {
     QSqlQuery query(db);
     query.prepare("UPDATE Account SET balance = balance + :delta WHERE user_id = :user_id");
     query.bindValue(":delta", delta);
@@ -42,7 +42,7 @@ bool AccountDAO::updateBalance(qint64 userId, double delta, QSqlDatabase& db) {
     return query.exec();
 }
 
-qint64 AccountDAO::getAccountIdByUserId(qint64 userId, QSqlDatabase& db) {
+qint64 AccountDAO::getAccountIdByUserId(QSqlDatabase& db, qint64 userId) {
     QSqlQuery query(db);
     query.prepare("SELECT id FROM Account WHERE user_id = :user_id");
     query.bindValue(":user_id", userId);
@@ -52,7 +52,7 @@ qint64 AccountDAO::getAccountIdByUserId(qint64 userId, QSqlDatabase& db) {
     return -1;
 }
 
-bool AccountDAO::updateBalanceByAccountId(qint64 accountId, double delta, QSqlDatabase& db) {
+bool AccountDAO::updateBalanceByAccountId(QSqlDatabase& db, qint64 accountId, double delta) {
     QSqlQuery query(db);
     query.prepare("UPDATE Account SET balance = balance + :delta WHERE id = :id");
     query.bindValue(":delta", delta);
@@ -60,7 +60,7 @@ bool AccountDAO::updateBalanceByAccountId(qint64 accountId, double delta, QSqlDa
     return query.exec();
 }
 
-qint64 AccountDAO::getUserIdByAccountId(qint64 accountId, QSqlDatabase& db) {
+qint64 AccountDAO::getUserIdByAccountId(QSqlDatabase& db, qint64 accountId) {
     QSqlQuery query(db);
     query.prepare("SELECT user_id FROM Account WHERE id = :id");
     query.bindValue(":id", accountId);
@@ -70,7 +70,7 @@ qint64 AccountDAO::getUserIdByAccountId(qint64 accountId, QSqlDatabase& db) {
     return -1;
 }
 
-QHash<qint64, qint64> AccountDAO::getUserIdsByAccountIds(const QSet<qint64>& accountIds, QSqlDatabase& db) {
+QHash<qint64, qint64> AccountDAO::getUserIdsByAccountIds(QSqlDatabase& db, const QSet<qint64>& accountIds) {
     QHash<qint64, qint64> result;
 
     if (accountIds.isEmpty()) {
