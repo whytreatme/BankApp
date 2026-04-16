@@ -1,5 +1,4 @@
 #include "transactiondao.h"
-#include "../database.h"
 #include "../snowflake.h"
 #include <QSqlQuery>
 #include <QSqlError>
@@ -7,17 +6,9 @@
 
 TransactionDAO::TransactionDAO() {}
 
-QSqlDatabase TransactionDAO::getDatabase() {
-    QSqlDatabase w_db;
-    if(!Database::getThreadConnection(w_db)){
-        qCritical() << "DAO Error: Cannot get datbase access! ";
-    }
-    return w_db;
-}
-
-qint64 TransactionDAO::insert(qint64 fromAccount, qint64 toAccount, double amount, const QString& type, const QString& remark) {
+qint64 TransactionDAO::insert(qint64 fromAccount, qint64 toAccount, double amount, const QString& type, const QString& remark, QSqlDatabase& db) {
     qint64 id = Snowflake::instance().nextId();
-    QSqlQuery query(getDatabase());
+    QSqlQuery query(db);
     query.prepare("INSERT INTO Transaction (id, from_account_id, to_account_id, amount, type, remark) "
                   "VALUES (:id, :from, :to, :amount, :type, :remark)");
     query.bindValue(":id", id);
@@ -34,9 +25,9 @@ qint64 TransactionDAO::insert(qint64 fromAccount, qint64 toAccount, double amoun
     return id;
 }
 
-QList<QVariantMap> TransactionDAO::findByUserId(qint64 userId, int limit) {
+QList<QVariantMap> TransactionDAO::findByUserId(qint64 userId, int limit, QSqlDatabase& db) {
     QList<QVariantMap> txns;
-    QSqlQuery query(getDatabase());
+    QSqlQuery query(db);
     // 查询该用户账户相关的转出和转入
     query.prepare(R"(
         SELECT t.id, t.from_account_id, t.to_account_id, t.amount, t.type, t.remark, t.timestamp
@@ -65,9 +56,9 @@ QList<QVariantMap> TransactionDAO::findByUserId(qint64 userId, int limit) {
     return txns;
 }
 
-QList<QVariantMap> TransactionDAO::findAll(int limit) {
+QList<QVariantMap> TransactionDAO::findAll(int limit, QSqlDatabase& db) {
     QList<QVariantMap> txns;
-    QSqlQuery query(getDatabase());
+    QSqlQuery query(db);
     query.prepare("SELECT id, from_account_id, to_account_id, amount, type, remark, timestamp "
                   "FROM Transaction ORDER BY timestamp DESC LIMIT :limit");
     query.bindValue(":limit", limit);

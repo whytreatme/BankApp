@@ -5,23 +5,17 @@
 #include <QSqlError>
 #include <QDebug>
 #include <QUuid>
+#include <QSet>
+#include <QHash>
 
 UserDAO::UserDAO() {}
 
-QSqlDatabase UserDAO::getDatabase() {
-    QSqlDatabase w_db;
-    if(!Database::getThreadConnection(w_db)){
-        qCritical() << "DAO Error: Cannot get datbase access! ";
-    }
-    return w_db;
-}
-
 QString UserDAO::insert(const QString& username, const QString& passwordHash, const QString& salt,
-                        bool isAdmin, bool isApproved) {
+                        bool isAdmin, bool isApproved, QSqlDatabase& db) {
     qint64 id = Snowflake::instance().nextId();
     QString cardNumber = Database::instance().generateCardNumber();
 
-    QSqlQuery query(getDatabase());
+    QSqlQuery query(db);
     query.prepare("INSERT INTO User (id, card_number, username, password_hash, salt, is_admin, is_approved) "
                   "VALUES (:id, :card, :name, :hash, :salt, :admin, :approved)");
     query.bindValue(":id", id);
@@ -41,13 +35,13 @@ QString UserDAO::insert(const QString& username, const QString& passwordHash, co
 
 QString UserDAO::insertWithDetails(const QString& fullName, const QString& idCard, const QString& phone,
                                    const QString& birthDate, const QString& address,
-                                   const QString& passwordHash, const QString& salt) {
+                                   const QString& passwordHash, const QString& salt, QSqlDatabase& db) {
     qint64 id = Snowflake::instance().nextId();
     QString cardNumber = Database::instance().generateCardNumber();
     // 生成用户名：使用卡号后8位
     QString username = cardNumber.right(8);  // 简单使用卡号后8位作为用户名
 
-    QSqlQuery query(getDatabase());
+    QSqlQuery query(db);
     query.prepare("INSERT INTO User (id, card_number, username, password_hash, salt, is_admin, is_approved, "
                   "full_name, id_card, phone, birth_date, address) "
                   "VALUES (:id, :card, :name, :hash, :salt, 0, 1, :fullname, :idcard, :phone, :birth, :addr)");
@@ -70,8 +64,8 @@ QString UserDAO::insertWithDetails(const QString& fullName, const QString& idCar
 }
 
 bool UserDAO::findByUsername(const QString& username, qint64& id, QString& cardNumber, QString& passwordHash, QString& salt,
-                            bool* isAdmin, bool* isApproved, QString* fullName, QString* phone, QString* idCard, QString* birthDate) {
-    QSqlQuery query(getDatabase());
+                            bool* isAdmin, bool* isApproved, QString* fullName, QString* phone, QString* idCard, QString* birthDate, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("SELECT id, card_number, password_hash, salt, is_admin, is_approved, full_name, phone, id_card, birth_date FROM User WHERE username = :name");
     query.bindValue(":name", username);  //占位符
 
@@ -92,8 +86,8 @@ bool UserDAO::findByUsername(const QString& username, qint64& id, QString& cardN
 }
 
 bool UserDAO::findByCardNumber(const QString& cardNumber, qint64& id, QString& username, QString& passwordHash, QString& salt,
-                              bool* isAdmin, bool* isApproved, QString* fullName, QString* phone, QString* idCard, QString* birthDate) {
-    QSqlQuery query(getDatabase());
+                              bool* isAdmin, bool* isApproved, QString* fullName, QString* phone, QString* idCard, QString* birthDate, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("SELECT id, username, password_hash, salt, is_admin, is_approved, full_name, phone, id_card, birth_date FROM User WHERE card_number = :card");
     query.bindValue(":card", cardNumber);
 
@@ -113,15 +107,15 @@ bool UserDAO::findByCardNumber(const QString& cardNumber, qint64& id, QString& u
     return false;
 }
 
-bool UserDAO::exists(const QString& username) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::exists(const QString& username, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("SELECT COUNT(*) FROM User WHERE username = :name");
     query.bindValue(":name", username);
     return query.exec() && query.next() && query.value(0).toInt() > 0;
 }
 
-bool UserDAO::findById(qint64 id, QString& username, QString& cardNumber, bool& isAdmin, bool& isApproved) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::findById(qint64 id, QString& username, QString& cardNumber, bool& isAdmin, bool& isApproved, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("SELECT username, card_number, is_admin, is_approved FROM User WHERE id = :id");
     query.bindValue(":id", id);
     if (query.exec() && query.next()) {
@@ -134,8 +128,8 @@ bool UserDAO::findById(qint64 id, QString& username, QString& cardNumber, bool& 
     return false;
 }
 
-bool UserDAO::findIdByCardOrUsername(const QString& val, qint64& id) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::findIdByCardOrUsername(const QString& val, qint64& id, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("SELECT id FROM User WHERE card_number = :val OR username = :val");
     query.bindValue(":val", val);
     if (query.exec() && query.next()) {
@@ -145,39 +139,39 @@ bool UserDAO::findIdByCardOrUsername(const QString& val, qint64& id) {
     return false;
 }
 
-bool UserDAO::isAdmin(qint64 id) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::isAdmin(qint64 id, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("SELECT is_admin FROM User WHERE id = :id");
     query.bindValue(":id", id);
     return query.exec() && query.next() && query.value(0).toBool();
 }
 
-bool UserDAO::isApproved(qint64 id) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::isApproved(qint64 id, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("SELECT is_approved FROM User WHERE id = :id");
     query.bindValue(":id", id);
     return query.exec() && query.next() && query.value(0).toBool();
 }
 
-bool UserDAO::setAdmin(qint64 id, bool isAdmin) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::setAdmin(qint64 id, bool isAdmin, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("UPDATE User SET is_admin = :admin WHERE id = :id");
     query.bindValue(":admin", isAdmin ? 1 : 0);
     query.bindValue(":id", id);
     return query.exec();
 }
 
-bool UserDAO::setApproved(qint64 id, bool isApproved) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::setApproved(qint64 id, bool isApproved, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("UPDATE User SET is_approved = :approved WHERE id = :id");
     query.bindValue(":approved", isApproved ? 1 : 0);
     query.bindValue(":id", id);
     return query.exec();
 }
 
-QList<QVariantMap> UserDAO::getPendingUsers() {
+QList<QVariantMap> UserDAO::getPendingUsers(QSqlDatabase& db) {
     QList<QVariantMap> users;
-    QSqlQuery query(getDatabase());
+    QSqlQuery query(db);
     query.exec("SELECT id, card_number, username, created_at FROM User WHERE is_approved = 0 ORDER BY created_at ASC");
     while (query.next()) {
         QVariantMap u;
@@ -190,9 +184,9 @@ QList<QVariantMap> UserDAO::getPendingUsers() {
     return users;
 }
 
-QList<QVariantMap> UserDAO::getAllUsers() {
+QList<QVariantMap> UserDAO::getAllUsers(QSqlDatabase& db) {
     QList<QVariantMap> users;
-    QSqlQuery query(getDatabase());
+    QSqlQuery query(db);
     query.exec("SELECT u.id, u.card_number, u.username, u.full_name, u.is_admin, u.is_approved, u.created_at, a.balance, "
                "u.phone, u.id_card, u.birth_date "
                "FROM User u LEFT JOIN Account a ON u.id = a.user_id ORDER BY u.created_at ASC");
@@ -214,14 +208,14 @@ QList<QVariantMap> UserDAO::getAllUsers() {
     return users;
 }
 
-bool UserDAO::updateUserInfo(qint64 id, const QString& newUsername, int isAdmin, int isApproved) {
+bool UserDAO::updateUserInfo(qint64 id, const QString& newUsername, int isAdmin, int isApproved, QSqlDatabase& db) {
     QString sql = "UPDATE User SET id=id";
     if (!newUsername.isEmpty()) sql += ", username = :name";
     if (isAdmin != -1) sql += ", is_admin = :admin";
     if (isApproved != -1) sql += ", is_approved = :approved";
     sql += " WHERE id = :id";
 
-    QSqlQuery query(getDatabase());
+    QSqlQuery query(db);
     query.prepare(sql);
     if (!newUsername.isEmpty()) query.bindValue(":name", newUsername);
     if (isAdmin != -1) query.bindValue(":admin", isAdmin);
@@ -230,8 +224,8 @@ bool UserDAO::updateUserInfo(qint64 id, const QString& newUsername, int isAdmin,
     return query.exec();
 }
 
-bool UserDAO::updateUserProfile(qint64 id, const QString& fullName, const QString& idCard, const QString& phone, const QString& birthDate) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::updateUserProfile(qint64 id, const QString& fullName, const QString& idCard, const QString& phone, const QString& birthDate, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("UPDATE User SET full_name = :fullname, id_card = :idcard, phone = :phone, birth_date = :birth WHERE id = :id");
     query.bindValue(":fullname", fullName);
     query.bindValue(":idcard", idCard);
@@ -241,8 +235,8 @@ bool UserDAO::updateUserProfile(qint64 id, const QString& fullName, const QStrin
     return query.exec();
 }
 
-bool UserDAO::updatePassword(qint64 id, const QString& newPasswordHash, const QString& newSalt) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::updatePassword(qint64 id, const QString& newPasswordHash, const QString& newSalt, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("UPDATE User SET password_hash = :hash, salt = :salt WHERE id = :id");
     query.bindValue(":hash", newPasswordHash);
     query.bindValue(":salt", newSalt);
@@ -250,8 +244,8 @@ bool UserDAO::updatePassword(qint64 id, const QString& newPasswordHash, const QS
     return query.exec();
 }
 
-bool UserDAO::getPasswordInfo(qint64 id, QString& passwordHash, QString& salt) {
-    QSqlQuery query(getDatabase());
+bool UserDAO::getPasswordInfo(qint64 id, QString& passwordHash, QString& salt, QSqlDatabase& db) {
+    QSqlQuery query(db);
     query.prepare("SELECT password_hash, salt FROM User WHERE id = :id");
     query.bindValue(":id", id);
     if (query.exec() && query.next()) {
@@ -260,4 +254,35 @@ bool UserDAO::getPasswordInfo(qint64 id, QString& passwordHash, QString& salt) {
         return true;
     }
     return false;
+}
+
+QHash<qint64, QVariantMap> UserDAO::findByIds(const QSet<qint64>& ids, QSqlDatabase& db) {
+    QHash<qint64, QVariantMap> result;
+
+    if (ids.isEmpty()) {
+        return result;
+    }
+
+    // 构建 SQL IN 子句
+    QStringList idStrings;
+    for (qint64 id : ids) {
+        idStrings.append(QString::number(id));
+    }
+    QString inClause = idStrings.join(",");
+
+    QString sql = QString("SELECT id, username, card_number FROM User WHERE id IN (%1)").arg(inClause);
+
+    QSqlQuery query(db);
+    if (query.exec(sql)) {
+        while (query.next()) {
+            qint64 id = query.value(0).toLongLong();
+            QVariantMap userMap;
+            userMap["id"] = id;
+            userMap["username"] = query.value(1).toString();
+            userMap["card_number"] = query.value(2).toString();
+            result[id] = userMap;
+        }
+    }
+
+    return result;
 }

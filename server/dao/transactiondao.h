@@ -14,20 +14,17 @@ public:
     /**
      * @brief 插入交易记录
      */
-    qint64 insert(qint64 fromAccount, qint64 toAccount, double amount, const QString& type, const QString& remark = "");
+    qint64 insert(qint64 fromAccount, qint64 toAccount, double amount, const QString& type, const QString& remark = "", QSqlDatabase& db);
 
     /**
      * @brief 查询用户的交易历史
      */
-    QList<QVariantMap> findByUserId(qint64 userId, int limit = 20);
+    QList<QVariantMap> findByUserId(qint64 userId, int limit = 20, QSqlDatabase& db);
 
     /**
      * @brief 查询所有交易记录（管理员用）
      */
-    QList<QVariantMap> findAll(int limit = 100);
-
-private:
-    QSqlDatabase getDatabase();
+    QList<QVariantMap> findAll(int limit = 100, QSqlDatabase& db);
 };
 
 #endif // TRANSACTIONDAO_H
