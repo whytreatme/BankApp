@@ -20,9 +20,11 @@ QJsonObject TransactionService::getTransactions(const QString& userIdStr, const 
     if (limit > 100) limit = 100;
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return errorResponse("无法获取数据库连接");
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return errorResponse("无法获取数据库连接");
+        }
     }
 
     // 第 1 步：获取交易记录
@@ -89,9 +91,11 @@ QJsonObject TransactionService::getAllTransactions(const QJsonObject& req)
     int limit = req.value("limit").toInt(100);
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return errorResponse("无法获取数据库连接");
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return errorResponse("无法获取数据库连接");
+        }
     }
 
     // 第 1 步：获取交易记录

@@ -39,13 +39,15 @@ QJsonObject UserService::registerUser(const QJsonObject& req)
     }
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     // 检查用户名是否已存在
-    if (m_userDao.exists(username, db)) {
+    if (m_userDao.exists(db, username)) {
         return {{"status", "error"}, {"msg", "用户名已存在"}};
     }
 
@@ -62,13 +64,13 @@ QJsonObject UserService::registerUser(const QJsonObject& req)
         QString cardNumber = generateCardNumber();
 
         // 插入用户（返回 user_id）
-        qint64 userId = m_userDao.insert(username, cardNumber, passwordHash, salt, false, false, db);
+        qint64 userId = m_userDao.insert(db, username, cardNumber, passwordHash, salt, false, false);
         if (userId == -1) {
             throw std::runtime_error("用户创建失败");
         }
 
         // 为用户创建账户
-        qint64 accountId = m_accountDao.create(userId, 1000.0, db);
+        qint64 accountId = m_accountDao.create(db, userId, 1000.0);
         if (accountId == -1) {
             throw std::runtime_error("账户创建失败");
         }
@@ -107,9 +109,11 @@ QJsonObject UserService::login(const QJsonObject& req)
     QString password = req["password"].toString();
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     qint64 id;
@@ -117,10 +121,10 @@ QJsonObject UserService::login(const QJsonObject& req)
     bool isAdmin, isApproved;
 
     // 尝试按卡号找
-    bool found = m_userDao.findByCardNumber(account, id, username, storedHash, salt, &isAdmin, &isApproved, &fullName, &phone, &idCard, &birthDate, db);
+    bool found = m_userDao.findByCardNumber(db, account, id, username, storedHash, salt, &isAdmin, &isApproved, &fullName, &phone, &idCard, &birthDate);
     if (!found) {
         // 尝试按用户名找
-        found = m_userDao.findByUsername(account, id, cardNumber, storedHash, salt, &isAdmin, &isApproved, &fullName, &phone, &idCard, &birthDate, db);
+        found = m_userDao.findByUsername(db, account, id, cardNumber, storedHash, salt, &isAdmin, &isApproved, &fullName, &phone, &idCard, &birthDate);
     }
 
     if (!found) {
@@ -189,14 +193,16 @@ QJsonObject UserService::changePassword(const QJsonObject& req)
     }
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     // 获取当前密码哈希和盐
     QString currentHash, currentSalt;
-    if (!m_userDao.getPasswordInfo(userId, currentHash, currentSalt, db)) {
+    if (!m_userDao.getPasswordInfo(db, userId, currentHash, currentSalt)) {
         return {{"status", "error"}, {"msg", "用户不存在"}};
     }
 
@@ -210,7 +216,7 @@ QJsonObject UserService::changePassword(const QJsonObject& req)
     QString newHash = hashPassword(newPassword, newSalt);
 
     // 更新密码
-    if (!m_userDao.updatePassword(userId, newHash, newSalt, db)) {
+    if (!m_userDao.updatePassword(db, userId, newHash, newSalt)) {
         return {{"status", "error"}, {"msg", "密码修改失败"}};
     }
 

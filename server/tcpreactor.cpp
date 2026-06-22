@@ -139,7 +139,8 @@ void TcpReactor::onReadyRead()
        
         connect(task, &WorkTask::taskFinished, this, &TcpReactor::sendResponse, Qt::QueuedConnection);
         connect(task, &WorkTask::AuthSuccess, this, &TcpReactor::handleAuthSuccess, Qt::QueuedConnection);
-        QThreadPool::globalInstance()->start(task);
+        //QThreadPool::globalInstance()->start(task);
+       task->run();
        
     }
 }

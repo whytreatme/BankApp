@@ -26,9 +26,11 @@ QJsonObject AdminService::approveUser(const QJsonObject& req)
     bool approve = req["approve"].toBool();
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     QString username, cardNumber;
@@ -50,9 +52,11 @@ QJsonObject AdminService::getPendingUsers(const QJsonObject& req)
     Q_UNUSED(req);
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     QList<QVariantMap> users = m_userDao.getPendingUsers(db);
@@ -73,9 +77,11 @@ QJsonObject AdminService::getAllUsers(const QJsonObject& req)
     Q_UNUSED(req);
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     QList<QVariantMap> users = m_userDao.getAllUsers(db);
@@ -108,9 +114,11 @@ QJsonObject AdminService::setUserBalance(const QJsonObject& req)
     double newBalance = req["new_balance"].toDouble();
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     double currentBalance;
@@ -137,9 +145,11 @@ QJsonObject AdminService::updateUserInfo(const QJsonObject& req)
     int isApproved = req.contains("is_approved") ? (req["is_approved"].toBool() ? 1 : 0) : -1;
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     if (!m_userDao.updateUserInfo(db, userId, newUsername, isAdmin, isApproved)) {
@@ -176,9 +186,11 @@ QJsonObject AdminService::createUser(const QJsonObject& req)
     QString passwordHash = QCryptographicHash::hash((password + salt).toUtf8(), QCryptographicHash::Sha256).toHex();
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     // 开启事务
@@ -259,9 +271,11 @@ QJsonObject AdminService::resetPassword(const QJsonObject& req)
     QString newPasswordHash = QCryptographicHash::hash((newPassword + newSalt).toUtf8(), QCryptographicHash::Sha256).toHex();
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     if (!m_userDao.updatePassword(db, userId, newPasswordHash, newSalt)) {
@@ -293,9 +307,11 @@ QJsonObject AdminService::updateProfile(const QJsonObject& req)
     }
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return {{"status", "error"}, {"msg", "无法获取数据库连接"}};
+        }
     }
 
     if (!m_userDao.updateUserProfile(db, userId, fullName, idCard, phone, birthDate)) {

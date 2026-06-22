@@ -17,9 +17,11 @@ QJsonObject AccountService::getBalance(const QString& userIdStr)
     qint64 userId = userIdStr.toLongLong();
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return errorResponse("无法获取数据库连接");
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return errorResponse("无法获取数据库连接");
+        }
     }
 
     double balance;
@@ -41,9 +43,11 @@ QJsonObject AccountService::transfer(const QString& fromUserIdStr, const QJsonOb
     QString targetName = req["to_name"].toString().trimmed();
 
     // 获取数据库连接
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        return errorResponse("无法获取数据库连接");
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            return errorResponse("无法获取数据库连接");
+        }
     }
 
     UserDAO userDao;
@@ -144,10 +148,12 @@ QJsonObject AccountService::successResponse(const QString& msg, const QJsonObjec
 
 qint64 AccountService::getAccountIdByUserId(const QString& userIdStr)
 {
-    QSqlDatabase db;
-    if (!Database::getThreadConnection(db)) {
-        qCritical() << "Failed to get database connection in getAccountIdByUserId";
-        return -1;
+    thread_local QSqlDatabase db;
+    if (!db.isValid() || !db.isOpen()) {
+        if (!Database::getThreadConnection(db)) {
+            qCritical() << "Failed to get database connection in getAccountIdByUserId";
+            return -1;
+        }
     }
 
     return m_accountDao.getAccountIdByUserId(db, userIdStr.toLongLong());
